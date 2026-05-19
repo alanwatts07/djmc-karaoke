@@ -39,6 +39,50 @@ function sortSongs(songs: PublicSinger[]): PublicSinger[] {
   });
 }
 
+function SetlistRow({ song }: { song: PublicSinger }) {
+  const isDone = song.status === "done";
+  const isSinging = song.status === "singing";
+
+  // Three visual states only, matching the blind queue:
+  //   ✓ done    — green check, strikethrough
+  //   ▶ singing — bright accent, larger
+  //   ○ coming  — open circle, neutral
+  const marker = isDone ? "✓" : isSinging ? "▶" : "○";
+
+  return (
+    <li
+      className={[
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
+        isDone
+          ? "bg-black/20 text-white/40 line-through"
+          : isSinging
+            ? "bg-white/15 text-white ring-1 ring-white/40 font-semibold"
+            : "bg-black/30 text-white/85",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-sm font-bold",
+          isDone
+            ? "bg-emerald-500/30 text-emerald-300"
+            : isSinging
+              ? "bg-white text-rose-700"
+              : "border border-white/30 text-white/60",
+        ].join(" ")}
+        aria-hidden
+      >
+        {marker}
+      </span>
+      <span className="flex-1 truncate italic">{song.song}</span>
+      {isSinging && (
+        <span className="shrink-0 text-xs uppercase tracking-wider text-white/80">
+          Now
+        </span>
+      )}
+    </li>
+  );
+}
+
 export default function SongsView({ initial }: { initial: PublicSinger[] }) {
   const [songs, setSongs] = useState<PublicSinger[]>(sortSongs(initial));
 
@@ -65,54 +109,54 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
   const hero = songs[0];
   const name = hero?.stage_name ?? "";
 
+  const doneCount = songs.filter((s) => s.status === "done").length;
+  const upcomingCount = songs.length - doneCount;
+
   return (
     <main
       className={`flex-1 flex flex-col items-center p-6 text-white bg-gradient-to-b ${TIER_BG[hero?.status ?? "queued"]} transition-colors duration-700`}
     >
-      <div className="w-full max-w-sm flex-1 flex flex-col justify-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-white/70 mb-1 text-center">
+      <div className="w-full max-w-sm flex-1 flex flex-col">
+        <p className="text-sm uppercase tracking-[0.2em] text-white/70 mb-1 text-center mt-4">
           {name}
         </p>
 
         {hero && (
           <div className="text-center mt-4">
-            <p className="text-white/60 italic mb-6">{hero.song}</p>
             <h1 className="text-5xl font-bold tracking-tight mb-3">
               {publicTierLabel(hero.status)}
             </h1>
-            <p className="text-white/80 text-lg leading-relaxed">
+            <p className="text-white/80 text-base leading-relaxed">
               {publicTierSubtext(hero.status)}
             </p>
           </div>
         )}
 
-        {songs.length > 1 && (
-          <div className="mt-10">
-            <p className="text-xs uppercase tracking-widest text-white/50 mb-2 text-center">
-              Your other songs
+        <div className="mt-8">
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="text-xs uppercase tracking-widest text-white/50">
+              Your setlist
             </p>
-            <ul className="space-y-1.5">
-              {songs.slice(1).map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-black/30 px-3 py-2 text-sm"
-                >
-                  <span className="truncate italic text-white/80">{s.song}</span>
-                  <span className="shrink-0 text-xs px-2 py-0.5 rounded bg-white/10">
-                    {publicTierLabel(s.status)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs text-white/40">
+              {doneCount > 0 && `${doneCount} sung`}
+              {doneCount > 0 && upcomingCount > 0 && " · "}
+              {upcomingCount > 0 && `${upcomingCount} to go`}
+            </p>
           </div>
-        )}
 
-        <div className="mt-10 flex flex-col items-center gap-2">
+          <ul className="space-y-1.5">
+            {songs.map((s) => (
+              <SetlistRow key={s.id} song={s} />
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-8 flex flex-col items-center gap-2">
           <Link
             href="/"
             className="w-full text-center rounded-lg bg-white text-purple-900 hover:bg-purple-100 font-semibold text-lg py-3 transition"
           >
-            Sing another song
+            + Add another song
           </Link>
           <p className="text-xs text-white/50 mt-2">
             Keep this page open — it updates on its own.
