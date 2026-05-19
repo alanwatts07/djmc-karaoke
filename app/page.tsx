@@ -38,9 +38,9 @@ async function submit(formData: FormData) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; rename?: string }>;
+  searchParams: Promise<{ error?: string; rename?: string; add?: string }>;
 }) {
-  const { error, rename } = await searchParams;
+  const { error, rename, add } = await searchParams;
 
   // If we recognize the singer (cookie + previous row), skip the name input
   // and use the stored name. They can hit "not me?" to reset.
@@ -55,6 +55,20 @@ export default async function Home({
       .limit(1)
       .maybeSingle<Pick<Singer, "stage_name">>();
     if (data) knownName = data.stage_name;
+
+    // Returning singer with songs still in play — bounce them to /me so they
+    // see their setlist by default instead of the submit form. Bypass with
+    // ?add=1 (the "+ Add another song" button passes that).
+    if (knownName && add === undefined && error === undefined) {
+      const { data: active } = await db
+        .from("singers")
+        .select("id")
+        .eq("singer_token", token)
+        .neq("status", "done")
+        .limit(1)
+        .maybeSingle();
+      if (active) redirect("/me");
+    }
   }
 
   const errorMessage =
@@ -69,6 +83,15 @@ export default async function Home({
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">
       <div className="w-full max-w-sm">
+        {knownName && (
+          <a
+            href="/me"
+            className="block text-center text-sm text-purple-200 hover:text-white underline mb-4"
+          >
+            ← Back to your setlist
+          </a>
+        )}
+
         <h1 className="text-4xl font-bold tracking-tight text-center mb-2">
           {knownName ? `Hey, ${knownName}` : "Get on the mic"}
         </h1>

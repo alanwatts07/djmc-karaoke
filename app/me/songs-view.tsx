@@ -153,7 +153,7 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
 
         <div className="mt-8 flex flex-col items-center gap-2">
           <Link
-            href="/"
+            href="/?add=1"
             className="w-full text-center rounded-lg bg-white text-purple-900 hover:bg-purple-100 font-semibold text-lg py-3 transition"
           >
             + Add another song
