@@ -1,0 +1,53 @@
+import TipButton from "./tip-button";
+
+const VENMO = "therealalanwatts";
+const INSTAGRAM = "mattyshack7";
+const WEBSITE = "mattcorwin.dev";
+
+export default function Footer({
+  singerName,
+  promptForName,
+}: {
+  singerName?: string;
+  promptForName?: boolean;
+}) {
+  return (
+    <footer className="w-full mt-10 pt-5 border-t border-white/10 text-center text-xs text-white/60 space-y-3">
+      <p>
+        Hosted by <span className="font-semibold text-white/80">DJ MC</span>
+      </p>
+
+      <TipButton
+        venmoHandle={VENMO}
+        singerName={singerName}
+        readNameFromInput={promptForName}
+      />
+
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
+        <a
+          href={`https://instagram.com/${INSTAGRAM}`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-white"
+        >
+          @{INSTAGRAM}
+        </a>
+        <a
+          href={`https://${WEBSITE}`}
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-white"
+        >
+          {WEBSITE}
+        </a>
+      </div>
+
+      <p className="text-white/40 italic">
+        Custom karaoke software by DJ MC.{" "}
+        <a href={`https://${WEBSITE}`} className="underline hover:text-white/60">
+          Need something built?
+        </a>
+      </p>
+    </footer>
+  );
+}

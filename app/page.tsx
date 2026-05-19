@@ -1,65 +1,146 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
+import { db, type Singer } from "@/lib/supabase";
+import { ensureSingerToken, getSingerToken } from "@/lib/singer-token";
+import { fairInterleave } from "@/lib/queue-ops";
+import SubmitButton from "./submit-button";
+import Footer from "./footer";
 
-export default function Home() {
+async function submit(formData: FormData) {
+  "use server";
+
+  const stage_name = String(formData.get("stage_name") ?? "").trim();
+  const song = String(formData.get("song") ?? "").trim();
+
+  if (!stage_name || stage_name.length > 60) {
+    redirect("/?error=name");
+  }
+  if (!song || song.length > 120) {
+    redirect("/?error=song");
+  }
+
+  const token = await ensureSingerToken();
+
+  const { error } = await db
+    .from("singers")
+    .insert({ stage_name, song, singer_token: token })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("submit failed", error);
+    redirect("/?error=server");
+  }
+
+  await fairInterleave();
+  redirect("/me");
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; rename?: string }>;
+}) {
+  const { error, rename } = await searchParams;
+
+  // If we recognize the singer (cookie + previous row), skip the name input
+  // and use the stored name. They can hit "not me?" to reset.
+  let knownName = "";
+  const token = await getSingerToken();
+  if (token && !rename) {
+    const { data } = await db
+      .from("singers")
+      .select("stage_name")
+      .eq("singer_token", token)
+      .order("submitted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<Pick<Singer, "stage_name">>();
+    if (data) knownName = data.stage_name;
+  }
+
+  const errorMessage =
+    error === "name"
+      ? "Stage name is required (max 60 chars)."
+      : error === "song"
+        ? "Song is required (max 120 chars)."
+        : error === "server"
+          ? "Couldn't submit. Try again."
+          : null;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">
+      <div className="w-full max-w-sm">
+        <h1 className="text-4xl font-bold tracking-tight text-center mb-2">
+          {knownName ? `Hey, ${knownName}` : "Get on the mic"}
+        </h1>
+        <p className="text-center text-purple-200 mb-8">
+          {knownName
+            ? "Queue up another song."
+            : "Drop your name and song. We'll call you up."}
+        </p>
+
+        <form action={submit} className="space-y-4">
+          {knownName ? (
+            <input type="hidden" name="stage_name" value={knownName} />
+          ) : (
+            <label className="block">
+              <span className="block text-sm font-medium mb-1 text-purple-100">
+                Stage name
+              </span>
+              <input
+                name="stage_name"
+                required
+                maxLength={60}
+                autoComplete="off"
+                autoCapitalize="words"
+                className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
+                placeholder="What should we call you?"
+              />
+            </label>
+          )}
+
+          <label className="block">
+            <span className="block text-sm font-medium mb-1 text-purple-100">
+              Song
+            </span>
+            <input
+              name="song"
+              required
+              maxLength={120}
+              autoComplete="off"
+              className="w-full rounded-lg bg-white/10 border border-white/20 px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
+              placeholder="Artist - Song title"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          </label>
+
+          {errorMessage && (
+            <p className="text-sm text-rose-300 bg-rose-950/50 rounded p-2">
+              {errorMessage}
+            </p>
+          )}
+
+          <SubmitButton />
+        </form>
+
+        {knownName && (
+          <p className="text-center text-xs text-purple-300/70 mt-4">
+            Not {knownName}?{" "}
+            <a href="/?rename=1" className="underline">
+              use a different name
+            </a>
+          </p>
+        )}
+
+        <p className="text-center text-xs text-purple-300/70 mt-8">
+          Tips appreciated, never required.
+          <br />
+          Drop a tip with your stage name in the memo to expedite your song.
+        </p>
+
+        <Footer
+          singerName={knownName || undefined}
+          promptForName={!knownName}
+        />
+      </div>
+    </main>
   );
 }
