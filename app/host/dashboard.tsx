@@ -147,6 +147,18 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
     await refetch();
   }
 
+  async function clearQueue(mode: "all" | "completed") {
+    const message =
+      mode === "all"
+        ? `Delete the ENTIRE queue (${singers.length} rows)? This can't be undone.`
+        : `Archive ${counts.done ?? 0} completed singer${(counts.done ?? 0) === 1 ? "" : "s"}? Active singers stay put.`;
+    if (!confirm(message)) return;
+    dirtyRef.current = true;
+    await api("/api/host/clear", { mode });
+    dirtyRef.current = false;
+    await refetch();
+  }
+
   const counts = singers.reduce(
     (acc, s) => {
       acc[s.status] = (acc[s.status] ?? 0) + 1;
@@ -157,21 +169,41 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
 
   return (
     <main className="flex-1 bg-zinc-950 text-zinc-100">
-      <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-zinc-950/95 backdrop-blur z-10">
-        <div>
-          <h1 className="text-xl font-semibold">Host dashboard</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            {singers.length} total &middot;{" "}
+      <header className="border-b border-zinc-800 px-4 md:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 bg-zinc-950/95 backdrop-blur z-10">
+        <div className="min-w-0">
+          <h1 className="text-lg md:text-xl font-semibold">Host dashboard</h1>
+          <p className="text-xs text-zinc-500 mt-0.5 truncate">
+            {(counts.queued ?? 0) + (counts.getting_closer ?? 0) + (counts.on_deck ?? 0)}{" "}
+            up next &middot;{" "}
             {counts.singing ?? 0} singing &middot;{" "}
-            {(counts.queued ?? 0) + (counts.getting_closer ?? 0) + (counts.on_deck ?? 0)} in
-            rotation
+            {counts.hold ?? 0} hold &middot;{" "}
+            <span className="text-emerald-500">{counts.done ?? 0} done</span>
           </p>
         </div>
-        <form action="/api/host/logout" method="post">
-          <button className="text-sm text-zinc-400 hover:text-zinc-200" type="submit">
-            Sign out
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => clearQueue("completed")}
+            disabled={!counts.done}
+            className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Delete only the rows marked Done"
+          >
+            Archive done
+            {counts.done ? ` (${counts.done})` : ""}
           </button>
-        </form>
+          <button
+            onClick={() => clearQueue("all")}
+            disabled={singers.length === 0}
+            className="text-xs px-2.5 py-1.5 rounded bg-rose-900 hover:bg-rose-800 disabled:opacity-40 disabled:cursor-not-allowed text-rose-100"
+            title="Wipe the entire queue — end of night"
+          >
+            Clear all
+          </button>
+          <form action="/api/host/logout" method="post">
+            <button className="text-xs text-zinc-400 hover:text-zinc-200" type="submit">
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       <div className="p-4 md:p-6 space-y-3 max-w-3xl mx-auto">
