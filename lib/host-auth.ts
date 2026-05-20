@@ -51,6 +51,16 @@ export function checkPassword(submitted: string): boolean {
       "HOST_PASSWORD is not set. Set it in .env.local before logging in.",
     );
   }
-  if (submitted.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(submitted), Buffer.from(expected));
+  // Compare in constant time across length differences too. Pad both buffers
+  // to the same size before timingSafeEqual, then require lengths to match.
+  // This avoids leaking the password length via early-exit timing.
+  const a = Buffer.from(submitted);
+  const b = Buffer.from(expected);
+  const max = Math.max(a.length, b.length, 1);
+  const ap = Buffer.alloc(max);
+  const bp = Buffer.alloc(max);
+  a.copy(ap);
+  b.copy(bp);
+  const equal = timingSafeEqual(ap, bp);
+  return equal && a.length === b.length;
 }

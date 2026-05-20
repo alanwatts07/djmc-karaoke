@@ -27,6 +27,11 @@ export default async function HostLogin({
           {error === "bad" && (
             <p className="text-rose-400 text-sm">Wrong password.</p>
           )}
+          {error === "locked" && (
+            <p className="text-rose-400 text-sm">
+              Too many failed attempts. Try again in about a minute.
+            </p>
+          )}
           {error === "server" && (
             <p className="text-rose-400 text-sm">
               Server error. Check that HOST_PASSWORD and HOST_COOKIE_SECRET are set.

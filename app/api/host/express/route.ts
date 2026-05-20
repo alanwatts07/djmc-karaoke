@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { db, type Singer } from "@/lib/supabase";
 import { isHostAuthed } from "@/lib/host-auth";
-import { reconcileStatuses, compactPositions } from "@/lib/queue-ops";
+import { reconcileStatuses, setQueueOrder } from "@/lib/queue-ops";
 
 // Bump a singer to the slot right after the currently-singing person (or to
 // the top if nobody is singing). Other rotation singers slide down by one.
+// Writes the whole queue order in one atomic RPC so the unique constraint
+// on queue_position can't trip mid-renumber.
 export async function POST(req: Request) {
   if (!(await isHostAuthed())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -29,27 +31,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Rotation = active singers. The singing person stays put; the express
-  // target slots in right after them.
-  const rotation = data.filter((s) =>
-    ["queued", "getting_closer", "on_deck", "singing"].includes(s.status),
+  const singing = data.filter((s) => s.status === "singing");
+  const otherRotation = data.filter(
+    (s) =>
+      ["queued", "getting_closer", "on_deck"].includes(s.status) &&
+      s.id !== id,
   );
+  const hold = data.filter((s) => s.status === "hold");
+  const done = data.filter((s) => s.status === "done");
 
-  const singingIdx = rotation.findIndex((s) => s.status === "singing");
-  const others = rotation.filter((s) => s.id !== id && s.status !== "singing");
-
+  // Full bucket order with target spliced in right after the currently-singing
+  // singer (or at the top if nobody is singing). If the target is the one
+  // singing, it stays where it is.
   const newOrder: Singer[] = [];
-  if (singingIdx >= 0) newOrder.push(rotation[singingIdx]);
+  newOrder.push(...singing);
   if (target.status !== "singing") newOrder.push(target);
-  newOrder.push(...others);
+  newOrder.push(...otherRotation);
+  newOrder.push(...hold);
+  newOrder.push(...done);
 
-  await Promise.all(
-    newOrder.map((s, idx) =>
-      db.from("singers").update({ queue_position: idx + 1 }).eq("id", s.id),
-    ),
-  );
-
-  await compactPositions();
+  await setQueueOrder(newOrder.map((s) => s.id));
   await reconcileStatuses();
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,12 @@ import { fairInterleave } from "@/lib/queue-ops";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
 
+// Per-device limits. The 3-active cap is the primary defense against flooding
+// (one phone can't pile up the queue); the hourly window is belt-and-suspenders
+// for delete-and-resubmit cycling.
+const MAX_ACTIVE_SONGS = 3;
+const MAX_SUBMISSIONS_PER_HOUR = 6;
+
 async function submit(formData: FormData) {
   "use server";
 
@@ -19,6 +25,25 @@ async function submit(formData: FormData) {
   }
 
   const token = await ensureSingerToken();
+
+  const { count: activeCount } = await db
+    .from("singers")
+    .select("id", { count: "exact", head: true })
+    .eq("singer_token", token)
+    .neq("status", "done");
+  if ((activeCount ?? 0) >= MAX_ACTIVE_SONGS) {
+    redirect("/?error=cap");
+  }
+
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: hourCount } = await db
+    .from("singers")
+    .select("id", { count: "exact", head: true })
+    .eq("singer_token", token)
+    .gte("submitted_at", hourAgo);
+  if ((hourCount ?? 0) >= MAX_SUBMISSIONS_PER_HOUR) {
+    redirect("/?error=rate");
+  }
 
   const { error } = await db
     .from("singers")
@@ -76,9 +101,13 @@ export default async function Home({
       ? "Stage name is required (max 60 chars)."
       : error === "song"
         ? "Song is required (max 120 chars)."
-        : error === "server"
-          ? "Couldn't submit. Try again."
-          : null;
+        : error === "cap"
+          ? `You already have ${MAX_ACTIVE_SONGS} songs in your setlist. Wait for one to finish before adding another.`
+          : error === "rate"
+            ? "Whoa — that's a lot of submissions. Take a breather and try again in a bit."
+            : error === "server"
+              ? "Couldn't submit. Try again."
+              : null;
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">

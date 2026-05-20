@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/supabase";
 import { isHostAuthed } from "@/lib/host-auth";
-import { reconcileStatuses } from "@/lib/queue-ops";
+import { reconcileStatuses, setQueueOrder } from "@/lib/queue-ops";
 
 // Body: { order: string[] }  — full id list in the new order. The order should
 // include every singer id; positions are reassigned 1..N in that order.
@@ -16,12 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  await Promise.all(
-    order.map((id, idx) =>
-      db.from("singers").update({ queue_position: idx + 1 }).eq("id", id),
-    ),
-  );
-
+  await setQueueOrder(order);
   await reconcileStatuses();
   return NextResponse.json({ ok: true });
 }

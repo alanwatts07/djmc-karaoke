@@ -11,6 +11,16 @@ function singerKey(s: Singer): string {
   return s.singer_token ?? `name:${s.stage_name.toLowerCase()}`;
 }
 
+// Atomic queue renumber. Wraps the set_queue_order Postgres function, which
+// takes an advisory lock and renumbers via a two-pass write inside a single
+// transaction. Callers should pass every singer id; rows omitted from the
+// array keep their current position and can collide with the unique constraint.
+export async function setQueueOrder(orderedIds: string[]): Promise<void> {
+  if (orderedIds.length === 0) return;
+  const { error } = await db.rpc("set_queue_order", { ordered_ids: orderedIds });
+  if (error) throw error;
+}
+
 // Re-fetch the queue, recompute statuses, and persist any changes.
 // Call this after any operation that mutates queue_position or status.
 export async function reconcileStatuses(): Promise<void> {
@@ -24,7 +34,8 @@ export async function reconcileStatuses(): Promise<void> {
   const updates = recomputeStatuses(data);
   if (updates.length === 0) return;
 
-  // Issue individual updates in parallel. The set is small (≤ rotation size).
+  // Status updates don't touch queue_position, so the unique constraint and
+  // advisory lock aren't relevant here — parallel writes are safe.
   await Promise.all(
     updates.map((u) =>
       db.from("singers").update({ status: u.status }).eq("id", u.id),
@@ -70,16 +81,7 @@ export async function fairInterleave(): Promise<void> {
   // Final queue order: whoever is currently singing → rotations 1..N flattened
   // → hold (skipped singers, will rejoin) → done (history).
   const newOrder = [...singing, ...rotations.flat(), ...hold, ...done];
-
-  const writes = newOrder
-    .map((s, idx) => ({ id: s.id, position: idx + 1, old: s.queue_position }))
-    .filter((w) => w.position !== w.old);
-
-  await Promise.all(
-    writes.map((w) =>
-      db.from("singers").update({ queue_position: w.position }).eq("id", w.id),
-    ),
-  );
+  await setQueueOrder(newOrder.map((s) => s.id));
 }
 
 // Bucket order in the queue:
@@ -104,7 +106,7 @@ export async function compactPositions(): Promise<void> {
     .order("queue_position", { ascending: true })
     .returns<Singer[]>();
   if (error) throw error;
-  if (!data) return;
+  if (!data || data.length === 0) return;
 
   const sorted = [...data].sort((a, b) => {
     const diff = bucketOf(a) - bucketOf(b);
@@ -112,13 +114,5 @@ export async function compactPositions(): Promise<void> {
     return a.queue_position - b.queue_position;
   });
 
-  const writes = sorted
-    .map((s, idx) => ({ id: s.id, position: idx + 1, old: s.queue_position }))
-    .filter((w) => w.position !== w.old);
-
-  await Promise.all(
-    writes.map((w) =>
-      db.from("singers").update({ queue_position: w.position }).eq("id", w.id),
-    ),
-  );
+  await setQueueOrder(sorted.map((s) => s.id));
 }

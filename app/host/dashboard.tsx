@@ -148,11 +148,20 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
   }
 
   async function clearQueue(mode: "all" | "completed") {
-    const message =
-      mode === "all"
-        ? `Delete the ENTIRE queue (${singers.length} rows)? This can't be undone.`
-        : `Archive ${counts.done ?? 0} completed singer${(counts.done ?? 0) === 1 ? "" : "s"}? Active singers stay put.`;
-    if (!confirm(message)) return;
+    if (mode === "all") {
+      const typed = prompt(
+        `This will DELETE the entire queue (${singers.length} singer${singers.length === 1 ? "" : "s"}, including anyone currently singing). Type CLEAR to confirm.`,
+      );
+      if (typed?.trim().toUpperCase() !== "CLEAR") return;
+    } else {
+      const done = counts.done ?? 0;
+      if (
+        !confirm(
+          `Archive ${done} completed singer${done === 1 ? "" : "s"}? Active singers stay put.`,
+        )
+      )
+        return;
+    }
     dirtyRef.current = true;
     await api("/api/host/clear", { mode });
     dirtyRef.current = false;
