@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PublicSinger, SingerStatus } from "@/lib/supabase";
 import { publicTierLabel, publicTierSubtext } from "@/lib/tiers";
 import Footer from "../footer";
@@ -39,14 +39,107 @@ function sortSongs(songs: PublicSinger[]): PublicSinger[] {
   });
 }
 
-function SetlistRow({ song }: { song: PublicSinger }) {
+function SetlistRow({
+  song,
+  onEdit,
+  onDelete,
+  onEnterEdit,
+  onLeaveEdit,
+}: {
+  song: PublicSinger;
+  onEdit: (newSong: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+  onEnterEdit: () => void;
+  onLeaveEdit: () => void;
+}) {
   const isDone = song.status === "done";
   const isSinging = song.status === "singing";
+  const canEdit = !isDone && !isSinging;
 
-  // Three visual states only, matching the blind queue:
-  //   ✓ done    — green check, strikethrough
-  //   ▶ singing — bright accent, larger
-  //   ○ coming  — open circle, neutral
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(song.song);
+  const [busy, setBusy] = useState(false);
+
+  function startEdit() {
+    setDraft(song.song);
+    setEditing(true);
+    onEnterEdit();
+  }
+  function cancelEdit() {
+    setDraft(song.song);
+    setEditing(false);
+    onLeaveEdit();
+  }
+  async function saveEdit() {
+    const next = draft.trim();
+    if (!next || next === song.song) {
+      cancelEdit();
+      return;
+    }
+    setBusy(true);
+    try {
+      await onEdit(next);
+      setEditing(false);
+      onLeaveEdit();
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function removeRow() {
+    if (!confirm(`Remove "${song.song}" from your setlist?`)) return;
+    setBusy(true);
+    try {
+      await onDelete();
+      setEditing(false);
+      onLeaveEdit();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <li className="rounded-lg bg-black/40 ring-1 ring-white/20 p-3 space-y-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") saveEdit();
+            if (e.key === "Escape") cancelEdit();
+          }}
+          maxLength={120}
+          autoFocus
+          disabled={busy}
+          className="w-full rounded bg-black/50 border border-white/20 px-3 py-2 text-sm italic text-white focus:outline-none focus:border-white/60"
+        />
+        <div className="flex gap-2 text-xs">
+          <button
+            onClick={saveEdit}
+            disabled={busy || !draft.trim()}
+            className="flex-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 py-1.5 font-medium"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+          <button
+            onClick={cancelEdit}
+            disabled={busy}
+            className="px-3 rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={removeRow}
+            disabled={busy}
+            className="px-3 rounded bg-rose-900 hover:bg-rose-800 text-rose-100 disabled:opacity-50"
+            title="Remove this song"
+          >
+            Delete
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   const marker = isDone ? "✓" : isSinging ? "▶" : "○";
 
   return (
@@ -79,21 +172,40 @@ function SetlistRow({ song }: { song: PublicSinger }) {
           Now
         </span>
       )}
+      {canEdit && (
+        <button
+          onClick={startEdit}
+          className="shrink-0 -mr-1 px-2 py-1 text-white/40 hover:text-white text-sm"
+          aria-label="Edit song"
+          title="Edit"
+        >
+          ✏️
+        </button>
+      )}
     </li>
   );
 }
 
 export default function SongsView({ initial }: { initial: PublicSinger[] }) {
   const [songs, setSongs] = useState<PublicSinger[]>(sortSongs(initial));
+  const editingRef = useRef(false); // pause polling while a row is being edited
+
+  async function refetch() {
+    const res = await fetch("/api/me", { cache: "no-store" });
+    if (!res.ok) return;
+    const { songs: next } = (await res.json()) as { songs: PublicSinger[] };
+    setSongs(sortSongs(next));
+  }
 
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
+      if (editingRef.current) return;
       try {
         const res = await fetch("/api/me", { cache: "no-store" });
         if (!res.ok) return;
         const { songs: next } = (await res.json()) as { songs: PublicSinger[] };
-        if (!cancelled) setSongs(sortSongs(next));
+        if (!cancelled && !editingRef.current) setSongs(sortSongs(next));
       } catch {
         // network blip
       }
@@ -104,6 +216,32 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
       clearInterval(handle);
     };
   }, []);
+
+  async function editSong(id: string, song: string) {
+    const res = await fetch("/api/me/edit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, song }),
+    });
+    if (!res.ok) {
+      alert("Couldn't update that song. It may already be locked in.");
+      return;
+    }
+    await refetch();
+  }
+
+  async function deleteSong(id: string) {
+    const res = await fetch("/api/me/delete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!res.ok) {
+      alert("Couldn't remove that song. It may already be locked in.");
+      return;
+    }
+    await refetch();
+  }
 
   // Hero tier = highest-priority active song (or the most-recent done).
   const hero = songs[0];
@@ -146,7 +284,18 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
 
           <ul className="space-y-1.5">
             {songs.map((s) => (
-              <SetlistRow key={s.id} song={s} />
+              <SetlistRow
+                key={s.id}
+                song={s}
+                onEdit={(next) => editSong(s.id, next)}
+                onDelete={() => deleteSong(s.id)}
+                onEnterEdit={() => {
+                  editingRef.current = true;
+                }}
+                onLeaveEdit={() => {
+                  editingRef.current = false;
+                }}
+              />
             ))}
           </ul>
         </div>
