@@ -6,7 +6,7 @@ import type { PublicSinger, SingerStatus } from "@/lib/supabase";
 import { publicTierLabel, publicTierSubtext } from "@/lib/tiers";
 import Footer from "../footer";
 
-const POLL_MS = 2500;
+const POLL_MS = 5000;
 
 // Only "singing" and "done" get distinct visuals; everything else is the
 // same neutral background so the singer can't read their position off the

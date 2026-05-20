@@ -6,7 +6,7 @@ import type { PublicSinger } from "@/lib/supabase";
 import { publicTierLabel, publicTierSubtext } from "@/lib/tiers";
 import Footer from "../../footer";
 
-const POLL_MS = 2500;
+const POLL_MS = 5000;
 
 const TIER_BG: Record<PublicSinger["status"], string> = {
   queued: "from-purple-950 via-fuchsia-900 to-black",
