@@ -350,10 +350,13 @@ function SortableRow({
 
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState(singer.notes ?? "");
-
-  useEffect(() => {
+  // Reset draft when the upstream note changes (e.g. another host edited it).
+  // Derive-during-render avoids React 19's set-state-in-effect warning.
+  const [lastSyncedNotes, setLastSyncedNotes] = useState(singer.notes);
+  if (singer.notes !== lastSyncedNotes) {
+    setLastSyncedNotes(singer.notes);
     setNotesDraft(singer.notes ?? "");
-  }, [singer.notes]);
+  }
 
   const isDone = singer.status === "done";
   const isHold = singer.status === "hold";

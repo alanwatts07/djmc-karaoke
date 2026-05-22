@@ -1,3 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db, type Singer } from "@/lib/supabase";
 import { ensureSingerToken, getSingerToken } from "@/lib/singer-token";
@@ -121,6 +123,15 @@ export default async function Home({
           </a>
         )}
 
+        <Image
+          src="/djmc-logo.png"
+          alt="DJ MC Karaoke"
+          width={180}
+          height={180}
+          priority
+          className="mx-auto mb-4 h-40 w-40 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
+        />
+
         <h1 className="text-4xl font-bold tracking-tight text-center mb-2">
           {knownName ? `Hey, ${knownName}` : "Get on the mic"}
         </h1>
@@ -176,9 +187,9 @@ export default async function Home({
         {knownName && (
           <p className="text-center text-xs text-purple-300/70 mt-4">
             Not {knownName}?{" "}
-            <a href="/?rename=1" className="underline">
+            <Link href="/?rename=1" className="underline">
               use a different name
-            </a>
+            </Link>
           </p>
         )}
 

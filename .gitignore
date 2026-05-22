@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local-only logo sources and QR generator output (kept out of the repo;
+# the in-app/public copies are what ship)
+/djmc.png
+/djmc-logo.png
+*:Zone.Identifier
+/scripts/qr/
