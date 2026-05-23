@@ -56,11 +56,19 @@ where s.id = renum.id
 -- queue_position must be unique. DEFERRABLE INITIALLY DEFERRED is required so
 -- set_queue_order() (below) can do its two-pass renumber within a single tx
 -- without tripping the constraint on intermediate values.
+--
+-- Re-run safety: check pg_constraint first instead of catching the error,
+-- since Postgres can throw either duplicate_object OR duplicate_table here
+-- depending on which path the constraint took.
 do $$ begin
-  alter table public.singers
-    add constraint singers_queue_position_unique
-    unique (queue_position) deferrable initially deferred;
-exception when duplicate_object then null; end $$;
+  if not exists (
+    select 1 from pg_constraint where conname = 'singers_queue_position_unique'
+  ) then
+    alter table public.singers
+      add constraint singers_queue_position_unique
+      unique (queue_position) deferrable initially deferred;
+  end if;
+end $$;
 
 -- Serialize all queue mutations through this advisory-lock key. Both the
 -- insert trigger and set_queue_order() acquire it so concurrent submissions,
