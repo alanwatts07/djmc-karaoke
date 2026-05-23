@@ -34,6 +34,15 @@ export default function Footer({
         </a>
       </div>
 
+      <div className="pt-1">
+        <a
+          href="mailto:me@mattcorwin.dev?subject=Book%20DJ%20MC%20for%20an%20event"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-sm px-5 py-2 transition no-underline"
+        >
+          📅 Book DJ MC for your event
+        </a>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
         <a
           href={`https://instagram.com/${INSTAGRAM}`}
