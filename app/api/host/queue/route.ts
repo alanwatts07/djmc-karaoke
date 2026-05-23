@@ -9,9 +9,13 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Active session only. archived_at-set rows (mid-night declutter) and
+  // night_id-set rows (closed nights) live in the stats history at /host/stats.
   const { data, error } = await db
     .from("singers")
     .select("*")
+    .is("night_id", null)
+    .is("archived_at", null)
     .order("queue_position", { ascending: true })
     .returns<Singer[]>();
 

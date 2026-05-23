@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -168,6 +169,35 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
     await refetch();
   }
 
+  async function endNight() {
+    const totalSung = counts.done ?? 0;
+    if (
+      !confirm(
+        `End the night and archive ${singers.length} singer${singers.length === 1 ? "" : "s"} (${totalSung} sung)? Stats will be locked in and the active queue cleared.`,
+      )
+    )
+      return;
+    dirtyRef.current = true;
+    const ok = await api("/api/host/end-night", {});
+    dirtyRef.current = false;
+    if (ok) {
+      await refetch();
+      alert("Night archived. See /host/stats for the recap.");
+    } else {
+      alert("Couldn't end the night — try again or check the server logs.");
+    }
+  }
+
+  async function editInfo(id: string, stage_name: string, song: string) {
+    dirtyRef.current = true;
+    setSingers((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, stage_name, song } : s)),
+    );
+    await api("/api/host/edit-singer", { id, stage_name, song });
+    dirtyRef.current = false;
+    await refetch();
+  }
+
   const counts = singers.reduce(
     (acc, s) => {
       acc[s.status] = (acc[s.status] ?? 0) + 1;
@@ -200,13 +230,20 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
             {counts.done ? ` (${counts.done})` : ""}
           </button>
           <button
-            onClick={() => clearQueue("all")}
+            onClick={endNight}
             disabled={singers.length === 0}
-            className="text-xs px-2.5 py-1.5 rounded bg-rose-900 hover:bg-rose-800 disabled:opacity-40 disabled:cursor-not-allowed text-rose-100"
-            title="Wipe the entire queue — end of night"
+            className="text-xs px-2.5 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            title="Lock in tonight's stats and clear the active queue"
           >
-            Clear all
+            End the night
           </button>
+          <Link
+            href="/host/stats"
+            className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700"
+            title="See past nights and records"
+          >
+            Stats
+          </Link>
           <form action="/api/host/logout" method="post">
             <button className="text-xs text-zinc-400 hover:text-zinc-200" type="submit">
               Sign out
@@ -235,6 +272,7 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
                 onRemove={() => remove(singer.id)}
                 onNotes={(n) => saveNotes(singer.id, n)}
                 onTip={(amt) => addTip(singer.id, amt)}
+                onEditInfo={(name, song) => editInfo(singer.id, name, song)}
               />
             ))}
           </SortableContext>
@@ -331,6 +369,7 @@ function SortableRow({
   onRemove,
   onNotes,
   onTip,
+  onEditInfo,
 }: {
   singer: Singer;
   onStatus: (s: SingerStatus) => void;
@@ -338,6 +377,7 @@ function SortableRow({
   onRemove: () => void;
   onNotes: (n: string) => void;
   onTip: (amt: number) => void;
+  onEditInfo: (stage_name: string, song: string) => Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: singer.id });
@@ -356,6 +396,41 @@ function SortableRow({
   if (singer.notes !== lastSyncedNotes) {
     setLastSyncedNotes(singer.notes);
     setNotesDraft(singer.notes ?? "");
+  }
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState(singer.stage_name);
+  const [songDraft, setSongDraft] = useState(singer.song);
+  const [editBusy, setEditBusy] = useState(false);
+  // Same derive-during-render pattern for name/song. Only re-sync while the
+  // editor is closed so we don't clobber a draft the host is typing.
+  const [lastSyncedName, setLastSyncedName] = useState(singer.stage_name);
+  const [lastSyncedSong, setLastSyncedSong] = useState(singer.song);
+  if (
+    !editOpen &&
+    (singer.stage_name !== lastSyncedName || singer.song !== lastSyncedSong)
+  ) {
+    setLastSyncedName(singer.stage_name);
+    setLastSyncedSong(singer.song);
+    setNameDraft(singer.stage_name);
+    setSongDraft(singer.song);
+  }
+
+  async function saveEdit() {
+    const name = nameDraft.trim();
+    const song = songDraft.trim();
+    if (!name || !song) return;
+    if (name === singer.stage_name && song === singer.song) {
+      setEditOpen(false);
+      return;
+    }
+    setEditBusy(true);
+    try {
+      await onEditInfo(name, song);
+      setEditOpen(false);
+    } finally {
+      setEditBusy(false);
+    }
   }
 
   const isDone = singer.status === "done";
@@ -426,6 +501,13 @@ function SortableRow({
               {singer.status === "hold" ? "Resume" : "Hold"}
             </button>
             <button
+              onClick={() => setEditOpen((o) => !o)}
+              className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              title="Edit name + song"
+            >
+              ✏️ Edit
+            </button>
+            <button
               onClick={() => setNotesOpen((o) => !o)}
               className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
             >
@@ -450,6 +532,45 @@ function SortableRow({
               Remove
             </button>
           </div>
+
+          {editOpen && (
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  placeholder="Stage name"
+                  maxLength={60}
+                  disabled={editBusy}
+                  className="flex-1 text-sm rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-fuchsia-500"
+                />
+                <input
+                  value={songDraft}
+                  onChange={(e) => setSongDraft(e.target.value)}
+                  placeholder="Song"
+                  maxLength={120}
+                  disabled={editBusy}
+                  className="flex-[1.5] text-sm rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-fuchsia-500"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setEditOpen(false)}
+                  disabled={editBusy}
+                  className="text-xs px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEdit}
+                  disabled={editBusy || !nameDraft.trim() || !songDraft.trim()}
+                  className="text-xs px-3 py-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50"
+                >
+                  {editBusy ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {notesOpen && (
             <div className="mt-3">

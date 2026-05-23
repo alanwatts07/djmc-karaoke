@@ -17,9 +17,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
+  // Scope to the active session — archived rows and closed-night rows
+  // shouldn't get renumbered by an express bump.
   const { data, error } = await db
     .from("singers")
     .select("*")
+    .is("night_id", null)
+    .is("archived_at", null)
     .order("queue_position", { ascending: true })
     .returns<Singer[]>();
   if (error || !data) {

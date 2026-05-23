@@ -25,9 +25,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
+  const nowIso = new Date().toISOString();
+
   if (status === "singing") {
-    // Only one person can be singing at a time.
-    await db.from("singers").update({ status: "done" }).eq("status", "singing");
+    // Only one person can be singing at a time. The auto-finished previous
+    // singer also gets a finished_singing_at stamp so stats know when their
+    // song actually ended.
+    await db
+      .from("singers")
+      .update({ status: "done", finished_singing_at: nowIso })
+      .eq("status", "singing")
+      .is("finished_singing_at", null);
+
+    // Record when they actually started singing — once only, never overwrite.
+    await db
+      .from("singers")
+      .update({ started_singing_at: nowIso })
+      .eq("id", id)
+      .is("started_singing_at", null);
+  }
+
+  if (status === "done") {
+    // Stamp the end timestamp once. Used by /api/host/end-night as the
+    // canonical "when did this person's song end" for the night's ended_at.
+    await db
+      .from("singers")
+      .update({ finished_singing_at: nowIso })
+      .eq("id", id)
+      .is("finished_singing_at", null);
   }
 
   const { error } = await db.from("singers").update({ status }).eq("id", id);

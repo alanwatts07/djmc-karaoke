@@ -106,7 +106,38 @@ begin
     where singers.id = t.uid;
 end $$;
 
+-- ===========================================================================
+-- Night archive / stats
+-- ===========================================================================
+-- Each completed bar night becomes a row in `nights`. Singers get a night_id
+-- when the host clicks "End the night"; archived_at is a soft-delete for
+-- mid-night declutter (lets the host hide "Done" rows from the active queue
+-- without losing them for stats).
+
+create table if not exists public.nights (
+  id               uuid primary key default gen_random_uuid(),
+  name             text,
+  started_at       timestamptz,                        -- first started_singing_at this night
+  ended_at         timestamptz not null default now(),
+  total_signups    integer not null default 0,
+  total_sung       integer not null default 0,
+  duration_seconds integer,                            -- last_sung - first_sung (null if 0/1 sung)
+  mins_per_singer  numeric(6,2)                        -- duration / total_sung / 60
+);
+create index if not exists nights_ended_at_idx on public.nights (ended_at desc);
+
+alter table public.singers
+  add column if not exists started_singing_at  timestamptz,
+  add column if not exists finished_singing_at timestamptz,
+  add column if not exists archived_at         timestamptz,
+  add column if not exists night_id            uuid references public.nights(id) on delete set null;
+
+create index if not exists singers_night_id_idx     on public.singers (night_id);
+create index if not exists singers_archived_at_idx  on public.singers (archived_at);
+
 -- Lock the table down. No anon policies = no anon access. The server uses
 -- the service role key, which bypasses RLS.
 alter table public.singers enable row level security;
+alter table public.nights  enable row level security;
 revoke all on public.singers from anon, authenticated;
+revoke all on public.nights  from anon, authenticated;

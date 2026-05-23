@@ -23,6 +23,17 @@ export default function Footer({
         readNameFromInput={promptForName}
       />
 
+      <div className="pt-1">
+        <a
+          href="https://radio.mattcorwin.dev"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-5 py-2 transition no-underline"
+        >
+          🎧 Not karaoke? Request a track for the DJ
+        </a>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1">
         <a
           href={`https://instagram.com/${INSTAGRAM}`}

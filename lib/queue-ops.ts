@@ -11,6 +11,18 @@ function singerKey(s: Singer): string {
   return s.singer_token ?? `name:${s.stage_name.toLowerCase()}`;
 }
 
+// All queue-mutating ops scope to the active session — rows not yet assigned
+// to a closed night and not soft-archived. Closed-night rows are read-only
+// stats; archived-but-not-yet-closed rows hide from the dashboard but stay
+// in their existing positions.
+function selectActiveSession() {
+  return db
+    .from("singers")
+    .select("*")
+    .is("night_id", null)
+    .is("archived_at", null);
+}
+
 // Atomic queue renumber. Wraps the set_queue_order Postgres function, which
 // takes an advisory lock and renumbers via a two-pass write inside a single
 // transaction. Callers should pass every singer id; rows omitted from the
@@ -24,10 +36,7 @@ export async function setQueueOrder(orderedIds: string[]): Promise<void> {
 // Re-fetch the queue, recompute statuses, and persist any changes.
 // Call this after any operation that mutates queue_position or status.
 export async function reconcileStatuses(): Promise<void> {
-  const { data, error } = await db
-    .from("singers")
-    .select("*")
-    .returns<Singer[]>();
+  const { data, error } = await selectActiveSession().returns<Singer[]>();
   if (error) throw error;
   if (!data) return;
 
@@ -51,9 +60,7 @@ export async function reconcileStatuses(): Promise<void> {
 // Sticky states (singing / hold / done) are not touched; we renumber the
 // rotation slots around them.
 export async function fairInterleave(): Promise<void> {
-  const { data, error } = await db
-    .from("singers")
-    .select("*")
+  const { data, error } = await selectActiveSession()
     .order("submitted_at", { ascending: true })
     .returns<Singer[]>();
   if (error || !data) return;
@@ -100,9 +107,7 @@ function bucketOf(s: Singer): number {
 // bucket, the existing order (by current queue_position) is preserved so
 // host drag-reorders inside the active rotation aren't disturbed.
 export async function compactPositions(): Promise<void> {
-  const { data, error } = await db
-    .from("singers")
-    .select("*")
+  const { data, error } = await selectActiveSession()
     .order("queue_position", { ascending: true })
     .returns<Singer[]>();
   if (error) throw error;

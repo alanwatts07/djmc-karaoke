@@ -28,6 +28,21 @@ export type Singer = {
   notes: string | null;
   tip_total: number;
   singer_token: string | null;
+  started_singing_at: string | null;
+  finished_singing_at: string | null;
+  archived_at: string | null;
+  night_id: string | null;
+};
+
+export type Night = {
+  id: string;
+  name: string | null;
+  started_at: string | null;
+  ended_at: string;
+  total_signups: number;
+  total_sung: number;
+  duration_seconds: number | null;
+  mins_per_singer: number | null;
 };
 
 export type PublicSinger = Pick<
