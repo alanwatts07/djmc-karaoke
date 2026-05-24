@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   KeyboardSensor,
   closestCenter,
   useSensor,
@@ -62,7 +63,14 @@ export default function HostDashboard({
   const dirtyRef = useRef(false); // local edits in flight; pause polling overwrites
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    // Mouse: 6px of movement triggers drag — same as before.
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    // Touch: press-and-hold 250ms (with <5px wobble allowed) before drag
+    // engages. Means quick swipes still scroll the list cleanly; you have
+    // to deliberately hold the handle to start a reorder.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -485,6 +493,15 @@ function SortableRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Haptic blip on touch devices when drag engages, so the host knows the
+  // long-press registered before they start moving. No-op if the browser
+  // doesn't expose vibrate (most desktops, iOS Safari without permission).
+  useEffect(() => {
+    if (isDragging && typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate?.(10);
+    }
+  }, [isDragging]);
+
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState(singer.notes ?? "");
   // Reset draft when the upstream note changes (e.g. another host edited it).
@@ -550,10 +567,17 @@ function SortableRow({
         <button
           {...attributes}
           {...listeners}
-          aria-label="Drag to reorder"
-          className="px-3 cursor-grab text-zinc-500 hover:text-zinc-300 touch-none"
+          aria-label="Press and hold to reorder"
+          title="Press and hold (or click and drag on desktop) to reorder"
+          className={[
+            "px-4 min-w-[44px] flex items-center justify-center",
+            "cursor-grab active:cursor-grabbing touch-none select-none",
+            "text-zinc-500 hover:text-zinc-200 active:text-fuchsia-400",
+            "border-r border-zinc-800/60",
+            isDragging ? "bg-fuchsia-900/40" : "hover:bg-zinc-800/60",
+          ].join(" ")}
         >
-          ⋮⋮
+          <span className="text-lg leading-none">⠿</span>
         </button>
 
         <div className="flex-1 py-3 pr-3">
