@@ -176,6 +176,20 @@ export default function HostDashboard({
     await refetch();
   }
 
+  async function seedTest() {
+    if (
+      !confirm(
+        "Add 8 [Test] singers to the active queue? Existing test rows are cleared first. End the night + delete the resulting night when done to clean up.",
+      )
+    )
+      return;
+    dirtyRef.current = true;
+    const ok = await api("/api/host/seed-test", {});
+    dirtyRef.current = false;
+    if (ok) await refetch();
+    else alert("Couldn't seed test data.");
+  }
+
   async function beginNight() {
     dirtyRef.current = true;
     const ok = await api("/api/host/begin-night", {});
@@ -298,9 +312,16 @@ export default function HostDashboard({
         <ManualAdd onAdd={manualAdd} />
 
         {singers.length === 0 && (
-          <p className="text-zinc-500 text-center py-12">
-            Queue is empty. Send singers to the URL on the QR sign.
-          </p>
+          <div className="text-zinc-500 text-center py-12 space-y-3">
+            <p>Queue is empty. Send singers to the URL on the QR sign.</p>
+            <button
+              onClick={seedTest}
+              className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400"
+              title="Drop 8 fake [Test] singers in to play with the dashboard"
+            >
+              Seed test queue
+            </button>
+          </div>
         )}
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

@@ -102,6 +102,26 @@ export default function NightsTable({ initial }: { initial: Night[] }) {
     setEditingId(null);
   }
 
+  async function deleteNight(id: string, label: string) {
+    if (
+      !confirm(
+        `Permanently delete "${label}" and all its singer rows? This can't be undone.`,
+      )
+    )
+      return;
+    const res = await fetch("/api/host/delete-night", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!res.ok) {
+      alert("Couldn't delete this night.");
+      return;
+    }
+    await refetch();
+    setEditingId(null);
+  }
+
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -167,6 +187,9 @@ export default function NightsTable({ initial }: { initial: Night[] }) {
                     night={n}
                     onSave={(fields) => saveEdit(n.id, fields)}
                     onCancel={() => setEditingId(null)}
+                    onDelete={() =>
+                      deleteNight(n.id, n.name ?? formatDate(n.ended_at))
+                    }
                   />
                 );
               }
@@ -225,6 +248,7 @@ function EditRow({
   night,
   onSave,
   onCancel,
+  onDelete,
 }: {
   night: Night;
   onSave: (fields: {
@@ -235,6 +259,7 @@ function EditRow({
     total_sung: number;
   }) => Promise<void>;
   onCancel: () => void;
+  onDelete: () => Promise<void>;
 }) {
   const [name, setName] = useState(night.name ?? "");
   const [startLocal, setStartLocal] = useState(isoToLocalInput(night.started_at));
@@ -324,6 +349,21 @@ function EditRow({
           </label>
         </div>
         <div className="flex gap-2 justify-end">
+          <button
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await onDelete();
+              } finally {
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+            className="text-xs px-3 py-1.5 rounded bg-rose-900 hover:bg-rose-800 text-rose-100 disabled:opacity-50 mr-auto"
+            title="Permanently delete this night and its singer rows"
+          >
+            Delete night
+          </button>
           <button
             onClick={onCancel}
             disabled={busy}
