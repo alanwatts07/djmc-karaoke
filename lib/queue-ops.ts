@@ -85,20 +85,37 @@ export async function fairInterleave(): Promise<void> {
     if (!placed) rotations.push([row]);
   }
 
-  // Boundary smoothing: if rotation[i]'s last singer == rotation[i+1]'s first
-  // singer, swap rotation[i+1]'s first with a later non-matching row in the
-  // same rotation. Fixes the case where someone with N songs ends up at the
-  // tail of rotation N and the head of rotation N+1 (back-to-back at the
-  // boundary). Preserves the one-per-rotation invariant.
+  // Boundary smoothing: when rotation[i]'s last singer == rotation[i+1]'s
+  // first singer, they'd play back-to-back at the rotation boundary. Try to
+  // resolve by swapping within next rotation first (cheaper, preserves the
+  // current rotation's order); if next has only one row or all same-singer,
+  // fall back to swapping within current rotation. Preserves the
+  // one-per-rotation invariant either way.
   for (let i = 0; i < rotations.length - 1; i++) {
     const rot = rotations[i];
     const next = rotations[i + 1];
-    if (rot.length === 0 || next.length < 2) continue;
+    if (rot.length === 0 || next.length === 0) continue;
     const tailKey = singerKey(rot[rot.length - 1]);
     if (singerKey(next[0]) !== tailKey) continue;
-    const swapIdx = next.findIndex((r, j) => j > 0 && singerKey(r) !== tailKey);
-    if (swapIdx > 0) {
-      [next[0], next[swapIdx]] = [next[swapIdx], next[0]];
+
+    // Try next: swap next[0] with a later different-singer row in next.
+    if (next.length >= 2) {
+      const swapIdx = next.findIndex((r, j) => j > 0 && singerKey(r) !== tailKey);
+      if (swapIdx > 0) {
+        [next[0], next[swapIdx]] = [next[swapIdx], next[0]];
+        continue;
+      }
+    }
+
+    // Fallback: swap rot's tail with the latest different-singer row in rot.
+    // Walking backward so we move the tail as little as possible.
+    if (rot.length >= 2) {
+      for (let k = rot.length - 2; k >= 0; k--) {
+        if (singerKey(rot[k]) !== tailKey) {
+          [rot[k], rot[rot.length - 1]] = [rot[rot.length - 1], rot[k]];
+          break;
+        }
+      }
     }
   }
 

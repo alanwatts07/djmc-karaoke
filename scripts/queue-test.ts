@@ -20,89 +20,164 @@ if (!process.argv.includes("--confirm-wipe")) {
 
 import { db, type Singer } from "@/lib/supabase";
 import { fairInterleave } from "@/lib/queue-ops";
-import { reconcileStatuses } from "@/lib/queue-ops";
+import { reconcileStatuses, compactPositions } from "@/lib/queue-ops";
+
+type Step =
+  | { type: "add"; name: string; song: string; token?: string }
+  | { type: "done"; name: string };
 
 type Scenario = {
   title: string;
-  steps: Array<{ name: string; song: string; token?: string }>;
+  // Mix of submissions and "mark this singer's oldest non-done row as done".
+  // Steps run in order so you can simulate mid-night state changes.
+  steps: Step[];
 };
+
+// Tiny DSL shortcut so the existing fresh-only scenarios stay readable.
+const sub = (name: string, song: string, token?: string): Step => ({
+  type: "add",
+  name,
+  song,
+  token,
+});
+const done = (name: string): Step => ({ type: "done", name });
 
 const SCENARIOS: Scenario[] = [
   {
     title: "Three different singers, one song each",
     steps: [
-      { name: "Alice", song: "Wonderwall", token: "t-alice" },
-      { name: "Bob", song: "Mr. Brightside", token: "t-bob" },
-      { name: "Carol", song: "Africa", token: "t-carol" },
+      sub("Alice", "Wonderwall", "t-alice"),
+      sub("Bob", "Mr. Brightside", "t-bob"),
+      sub("Carol", "Africa", "t-carol"),
     ],
   },
   {
     title: "Bob submits three in a row, nobody else in line",
     steps: [
-      { name: "Bob", song: "song A", token: "t-bob" },
-      { name: "Bob", song: "song B", token: "t-bob" },
-      { name: "Bob", song: "song C", token: "t-bob" },
+      sub("Bob", "song A", "t-bob"),
+      sub("Bob", "song B", "t-bob"),
+      sub("Bob", "song C", "t-bob"),
     ],
   },
   {
     title: "Bob, Bob, Alice — Bob's second should slot AFTER Alice",
     steps: [
-      { name: "Bob", song: "song A", token: "t-bob" },
-      { name: "Bob", song: "song B", token: "t-bob" },
-      { name: "Alice", song: "song C", token: "t-alice" },
+      sub("Bob", "song A", "t-bob"),
+      sub("Bob", "song B", "t-bob"),
+      sub("Alice", "song C", "t-alice"),
     ],
   },
   {
     title: "Heavy Bob: A B B B Carol B Alice — interleave under pressure",
     steps: [
-      { name: "Alice", song: "1", token: "t-alice" },
-      { name: "Bob", song: "2", token: "t-bob" },
-      { name: "Bob", song: "3", token: "t-bob" },
-      { name: "Bob", song: "4", token: "t-bob" },
-      { name: "Carol", song: "5", token: "t-carol" },
-      { name: "Bob", song: "6", token: "t-bob" },
-      { name: "Alice", song: "7", token: "t-alice" },
+      sub("Alice", "1", "t-alice"),
+      sub("Bob", "2", "t-bob"),
+      sub("Bob", "3", "t-bob"),
+      sub("Bob", "4", "t-bob"),
+      sub("Carol", "5", "t-carol"),
+      sub("Bob", "6", "t-bob"),
+      sub("Alice", "7", "t-alice"),
     ],
   },
   {
     title: "Walk-up adds by host (no token) — should still interleave by name",
     steps: [
-      { name: "Dan", song: "1" },
-      { name: "Dan", song: "2" },
-      { name: "Eve", song: "3" },
-      { name: "Dan", song: "4" },
+      sub("Dan", "1"),
+      sub("Dan", "2"),
+      sub("Eve", "3"),
+      sub("Dan", "4"),
     ],
   },
   {
     title: "Realistic 25-song night: 10 singers, mixed frequencies",
-    // Frequencies: Eve=5 (power), Bob=4, Alice=3, Hank=3,
-    //              Carol=2, Frank=2, Ivy=2, Jack=2, Dan=1, Grace=1
     steps: [
-      { name: "Alice", song: "a1", token: "t-alice" },
-      { name: "Bob", song: "b1", token: "t-bob" },
-      { name: "Carol", song: "c1", token: "t-carol" },
-      { name: "Dan", song: "d1", token: "t-dan" },
-      { name: "Eve", song: "e1", token: "t-eve" },
-      { name: "Frank", song: "f1", token: "t-frank" },
-      { name: "Bob", song: "b2", token: "t-bob" },
-      { name: "Grace", song: "g1", token: "t-grace" },
-      { name: "Eve", song: "e2", token: "t-eve" },
-      { name: "Alice", song: "a2", token: "t-alice" },
-      { name: "Hank", song: "h1", token: "t-hank" },
-      { name: "Bob", song: "b3", token: "t-bob" },
-      { name: "Eve", song: "e3", token: "t-eve" },
-      { name: "Ivy", song: "i1", token: "t-ivy" },
-      { name: "Jack", song: "j1", token: "t-jack" },
-      { name: "Eve", song: "e4", token: "t-eve" },
-      { name: "Hank", song: "h2", token: "t-hank" },
-      { name: "Bob", song: "b4", token: "t-bob" },
-      { name: "Carol", song: "c2", token: "t-carol" },
-      { name: "Eve", song: "e5", token: "t-eve" },
-      { name: "Frank", song: "f2", token: "t-frank" },
-      { name: "Hank", song: "h3", token: "t-hank" },
-      { name: "Ivy", song: "i2", token: "t-ivy" },
-      { name: "Jack", song: "j2", token: "t-jack" },
-      { name: "Alice", song: "a3", token: "t-alice" },
+      sub("Alice", "a1", "t-alice"),
+      sub("Bob", "b1", "t-bob"),
+      sub("Carol", "c1", "t-carol"),
+      sub("Dan", "d1", "t-dan"),
+      sub("Eve", "e1", "t-eve"),
+      sub("Frank", "f1", "t-frank"),
+      sub("Bob", "b2", "t-bob"),
+      sub("Grace", "g1", "t-grace"),
+      sub("Eve", "e2", "t-eve"),
+      sub("Alice", "a2", "t-alice"),
+      sub("Hank", "h1", "t-hank"),
+      sub("Bob", "b3", "t-bob"),
+      sub("Eve", "e3", "t-eve"),
+      sub("Ivy", "i1", "t-ivy"),
+      sub("Jack", "j1", "t-jack"),
+      sub("Eve", "e4", "t-eve"),
+      sub("Hank", "h2", "t-hank"),
+      sub("Bob", "b4", "t-bob"),
+      sub("Carol", "c2", "t-carol"),
+      sub("Eve", "e5", "t-eve"),
+      sub("Frank", "f2", "t-frank"),
+      sub("Hank", "h3", "t-hank"),
+      sub("Ivy", "i2", "t-ivy"),
+      sub("Jack", "j2", "t-jack"),
+      sub("Alice", "a3", "t-alice"),
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // Mid-night scenarios — these caused issues in real bar nights.
+  // -------------------------------------------------------------------------
+  {
+    title:
+      "Joey Bonez case: Bob sang earlier, then queues 2 more while Carol is in line",
+    // Real-world: a singer who already has a 'done' row submits more songs.
+    // Bob's first song was sung. The rotation builder shouldn't see Bob's done
+    // row as occupying a rotation slot, but his TWO new songs must not end up
+    // back-to-back if Carol is still waiting.
+    steps: [
+      sub("Bob", "b1", "t-bob"),
+      sub("Carol", "c1", "t-carol"),
+      done("Bob"),
+      sub("Bob", "b2", "t-bob"),
+      sub("Bob", "b3", "t-bob"),
+    ],
+  },
+  {
+    title: "Trio mid-night: 5 singers, 3 done, then top singer subs 2 more",
+    steps: [
+      sub("Alice", "a1", "t-alice"),
+      sub("Bob", "b1", "t-bob"),
+      sub("Carol", "c1", "t-carol"),
+      sub("Dan", "d1", "t-dan"),
+      sub("Eve", "e1", "t-eve"),
+      done("Alice"),
+      done("Bob"),
+      done("Carol"),
+      sub("Alice", "a2", "t-alice"),
+      sub("Alice", "a3", "t-alice"),
+    ],
+  },
+  {
+    title:
+      "Boundary stress: rotation 1 ends with X and rotation 2 starts with X",
+    // X has 2 songs queued, Y has 1, no others. Naive: [Y, X, X] adjacent.
+    // Smoothing should swap to [X, Y, X].
+    steps: [
+      sub("X", "x1", "t-x"),
+      sub("X", "x2", "t-x"),
+      sub("Y", "y1", "t-y"),
+    ],
+  },
+  {
+    title:
+      "Half the room done, returning singer drops 3 — should weave with the rest",
+    steps: [
+      sub("Mike", "m1", "t-mike"),
+      sub("Nat", "n1", "t-nat"),
+      sub("Ollie", "o1", "t-ollie"),
+      sub("Pat", "p1", "t-pat"),
+      done("Mike"),
+      done("Nat"),
+      sub("Quinn", "q1", "t-quinn"),
+      sub("Rae", "r1", "t-rae"),
+      sub("Mike", "m2", "t-mike"),
+      sub("Mike", "m3", "t-mike"),
+      sub("Mike", "m4", "t-mike"),
     ],
   },
 ];
@@ -123,6 +198,24 @@ async function add(name: string, song: string, token?: string) {
     .insert({ stage_name: name, song, singer_token: token ?? null });
   if (error) throw error;
   await fairInterleave();
+  await reconcileStatuses();
+}
+
+// Mark the oldest non-done row with this stage_name as done. Mirrors what
+// /api/host/status does for a "Done" click (without the timestamp tracking,
+// which doesn't matter for rotation testing).
+async function markDone(name: string) {
+  const { data } = await db
+    .from("singers")
+    .select("id")
+    .ilike("stage_name", name)
+    .neq("status", "done")
+    .order("submitted_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<Pick<Singer, "id">>();
+  if (!data) throw new Error(`No active row for "${name}" to mark done`);
+  await db.from("singers").update({ status: "done" }).eq("id", data.id);
+  await compactPositions();
   await reconcileStatuses();
 }
 
@@ -164,8 +257,14 @@ function printQueue(rows: Singer[]) {
       lastRot = rot;
     }
     const prev = rows[i - 1];
-    const adjacent = prev && prev.stage_name === r.stage_name;
-    const flag = adjacent ? "  ⚠ adjacent" : "";
+    // Only flag if both rows are still active — done-vs-active boundaries are
+    // not real adjacencies for the singer (the done row is in the past band).
+    const isActiveBoundary =
+      prev &&
+      prev.status !== "done" &&
+      r.status !== "done" &&
+      prev.stage_name === r.stage_name;
+    const flag = isActiveBoundary ? "  ⚠ adjacent" : "";
     console.log(
       `  ${String(r.queue_position).padStart(2)}. ${r.stage_name.padEnd(7)} "${r.song}"${flag}`,
     );
@@ -176,16 +275,25 @@ async function runScenario(scenario: Scenario, idx: number) {
   console.log(`\n=== Scenario ${idx + 1}: ${scenario.title} ===`);
   await clearTable();
   for (const step of scenario.steps) {
-    await add(step.name, step.song, step.token);
+    if (step.type === "add") {
+      await add(step.name, step.song, step.token);
+    } else {
+      await markDone(step.name);
+    }
   }
   const rows = await snapshot();
   printQueue(rows);
 
-  const adjacent = rows.filter(
-    (r, i) => i > 0 && rows[i - 1].stage_name === r.stage_name,
+  // Adjacency check ONLY considers active rows — done rows at the back of the
+  // queue don't count as "adjacent to" each other from the singer's POV.
+  const active = rows.filter((r) => r.status !== "done");
+  const adjacent = active.filter(
+    (r, i) =>
+      i > 0 &&
+      active[i - 1].stage_name.toLowerCase() === r.stage_name.toLowerCase(),
   );
   if (adjacent.length === 0) {
-    console.log("  ✅ no same-singer adjacencies");
+    console.log("  ✅ no same-singer adjacencies in active queue");
   } else {
     console.log(
       `  ⚠ ${adjacent.length} same-singer adjacency/ies (may be unavoidable if one singer dominates)`,
