@@ -59,6 +59,9 @@ export async function reconcileStatuses(): Promise<void> {
 //
 // Sticky states (singing / hold / done) are not touched; we renumber the
 // rotation slots around them.
+//
+// The actual algorithm lives in computeFairOrder() so it can be unit-tested
+// against synthetic data without touching the database.
 export async function fairInterleave(): Promise<void> {
   const { data, error } = await selectActiveSession()
     .order("submitted_at", { ascending: true })
@@ -66,10 +69,20 @@ export async function fairInterleave(): Promise<void> {
   if (error || !data) return;
   if (data.length === 0) return;
 
-  const singing = data.filter((s) => s.status === "singing");
-  const rotationRows = data.filter(isRotation);
-  const hold = data.filter((s) => s.status === "hold");
-  const done = data.filter((s) => s.status === "done");
+  const newOrder = computeFairOrder(data);
+  await setQueueOrder(newOrder.map((s) => s.id));
+}
+
+// PURE function: given the active session rows (in submitted_at order),
+// returns them in the order they should sit in the queue. No DB calls.
+// Safe to call from tests with synthetic data — no side effects.
+//
+// Order: singing → rotations 1..N flattened → hold → done.
+export function computeFairOrder(rows: Singer[]): Singer[] {
+  const singing = rows.filter((s) => s.status === "singing");
+  const rotationRows = rows.filter(isRotation);
+  const hold = rows.filter((s) => s.status === "hold");
+  const done = rows.filter((s) => s.status === "done");
 
   const rotations: Singer[][] = [];
   for (const row of rotationRows) {
@@ -98,7 +111,6 @@ export async function fairInterleave(): Promise<void> {
     const tailKey = singerKey(rot[rot.length - 1]);
     if (singerKey(next[0]) !== tailKey) continue;
 
-    // Try next: swap next[0] with a later different-singer row in next.
     if (next.length >= 2) {
       const swapIdx = next.findIndex((r, j) => j > 0 && singerKey(r) !== tailKey);
       if (swapIdx > 0) {
@@ -107,8 +119,6 @@ export async function fairInterleave(): Promise<void> {
       }
     }
 
-    // Fallback: swap rot's tail with the latest different-singer row in rot.
-    // Walking backward so we move the tail as little as possible.
     if (rot.length >= 2) {
       for (let k = rot.length - 2; k >= 0; k--) {
         if (singerKey(rot[k]) !== tailKey) {
@@ -119,10 +129,7 @@ export async function fairInterleave(): Promise<void> {
     }
   }
 
-  // Final queue order: whoever is currently singing → rotations 1..N flattened
-  // → hold (skipped singers, will rejoin) → done (history).
-  const newOrder = [...singing, ...rotations.flat(), ...hold, ...done];
-  await setQueueOrder(newOrder.map((s) => s.id));
+  return [...singing, ...rotations.flat(), ...hold, ...done];
 }
 
 // Bucket order in the queue:
