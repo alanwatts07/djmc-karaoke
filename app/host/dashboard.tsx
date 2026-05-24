@@ -165,7 +165,7 @@ export default function HostDashboard({
       const done = counts.done ?? 0;
       if (
         !confirm(
-          `Archive ${done} completed singer${done === 1 ? "" : "s"}? Active singers stay put.`,
+          `Hide ${done} completed singer${done === 1 ? "" : "s"} from the active dashboard? They stay in the database and get rolled into the night when you click End the night.`,
         )
       )
         return;
@@ -176,18 +176,52 @@ export default function HostDashboard({
     await refetch();
   }
 
+  // Realistic mix: 2 power singers with 3 songs each, 1 with 2, rest with 1.
+  // Interleaved in a plausible arrival order so the rotation rebuilds in
+  // an interesting way as each one drops.
+  const TEST_SEED = [
+    { stage_name: "[Test] Alice", song: "Wonderwall" },
+    { stage_name: "[Test] Bob", song: "Mr. Brightside" },
+    { stage_name: "[Test] Carol", song: "Toxic" },
+    { stage_name: "[Test] Eve", song: "Africa" },
+    { stage_name: "[Test] Bob", song: "Bohemian Rhapsody" },
+    { stage_name: "[Test] Dan", song: "Hotel California" },
+    { stage_name: "[Test] Eve", song: "Sweet Caroline" },
+    { stage_name: "[Test] Alice", song: "Don't Stop Believin'" },
+    { stage_name: "[Test] Bob", song: "Take On Me" },
+    { stage_name: "[Test] Frank", song: "Livin' on a Prayer" },
+    { stage_name: "[Test] Eve", song: "I Want It That Way" },
+  ];
+  const SEED_DELAY_MS = 1800;
+
   async function seedTest() {
+    const total = TEST_SEED.length;
     if (
       !confirm(
-        "Add 8 [Test] singers to the active queue? Existing test rows are cleared first. End the night + delete the resulting night when done to clean up.",
+        `Run live test: ${total} [Test] singers will be added one at a time over ~${Math.round((total * SEED_DELAY_MS) / 1000)}s so you can watch the rotation rearrange. Existing test rows clear first.`,
       )
     )
       return;
+
     dirtyRef.current = true;
-    const ok = await api("/api/host/seed-test", {});
+    // Step 1: clear any prior test rows from a previous run.
+    await api("/api/host/seed-test", {});
+    await refetch();
+
+    // Step 2: insert one at a time, refetch between, so the dashboard
+    // visibly rearranges with each new singer.
+    for (let i = 0; i < TEST_SEED.length; i++) {
+      const ok = await api("/api/host/add", TEST_SEED[i]);
+      if (!ok) {
+        alert(`Seed failed at step ${i + 1}. Stopping.`);
+        break;
+      }
+      await refetch();
+      if (i < TEST_SEED.length - 1) {
+        await new Promise((r) => setTimeout(r, SEED_DELAY_MS));
+      }
+    }
     dirtyRef.current = false;
-    if (ok) await refetch();
-    else alert("Couldn't seed test data.");
   }
 
   async function beginNight() {
@@ -267,9 +301,9 @@ export default function HostDashboard({
             onClick={() => clearQueue("completed")}
             disabled={!counts.done}
             className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Delete only the rows marked Done"
+            title="Hide Done rows from the active dashboard. They stay in the DB and roll into the night when you click End the night."
           >
-            Archive done
+            Hide done
             {counts.done ? ` (${counts.done})` : ""}
           </button>
           {sessionOpen ? (
