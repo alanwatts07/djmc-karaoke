@@ -54,8 +54,9 @@ async function api(path: string, body?: unknown): Promise<boolean> {
 type Density = "compact" | "medium" | "large";
 const DENSITY_STORAGE_KEY = "karaoke_density";
 
-// All the per-element sizing knobs live here so SortableRow can stay clean.
-// Compact = scan the whole list. Medium = default. Large = read across the room.
+// Density presets. Compact is a read-only one-liner (no drag handle, no
+// action buttons) — for scanning the whole queue at a glance. Switch to
+// medium/large when you actually want to act on a singer.
 const DENSITY_CLASSES: Record<
   Density,
   {
@@ -70,7 +71,20 @@ const DENSITY_CLASSES: Record<
     actionsMargin: string;
   }
 > = {
+  // compact is rendered with a totally different layout (single line, no
+  // buttons), so its values here are mostly placeholders.
   compact: {
+    rowPadding: "py-1 px-2",
+    nameText: "text-xs",
+    songText: "text-xs",
+    actionButton: "",
+    badge: "text-[9px] px-1.5 py-0.5",
+    handle: "",
+    handleIcon: "",
+    actionsGap: "",
+    actionsMargin: "",
+  },
+  medium: {
     rowPadding: "py-1.5 pr-2",
     nameText: "text-sm",
     songText: "text-xs",
@@ -81,7 +95,7 @@ const DENSITY_CLASSES: Record<
     actionsGap: "gap-1",
     actionsMargin: "mt-1.5",
   },
-  medium: {
+  large: {
     rowPadding: "py-3 pr-3",
     nameText: "text-base",
     songText: "text-sm",
@@ -91,17 +105,6 @@ const DENSITY_CLASSES: Record<
     handleIcon: "text-lg",
     actionsGap: "gap-1.5",
     actionsMargin: "mt-3",
-  },
-  large: {
-    rowPadding: "py-4 pr-4",
-    nameText: "text-lg",
-    songText: "text-base",
-    actionButton: "text-sm px-3 py-1.5",
-    badge: "text-sm px-2.5 py-0.5",
-    handle: "px-5 min-w-[52px]",
-    handleIcon: "text-xl",
-    actionsGap: "gap-2",
-    actionsMargin: "mt-4",
   },
 };
 
@@ -354,12 +357,15 @@ export default function HostDashboard({
 
   return (
     <main className="flex-1 bg-zinc-950 text-zinc-100">
-      <header className="border-b border-zinc-800 px-4 md:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 bg-zinc-950/95 backdrop-blur z-10">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg md:text-xl font-semibold">Host dashboard</h1>
+      <header className="border-b border-zinc-800 px-4 md:px-6 py-3 sticky top-0 bg-zinc-950/95 backdrop-blur z-10 space-y-2">
+        {/* Row 1: title + status pill + sign out (always one line) */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-base md:text-xl font-semibold truncate">
+              Host dashboard
+            </h1>
             <span
-              className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              className={`shrink-0 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
                 sessionOpen
                   ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700/60"
                   : "bg-zinc-800 text-zinc-400 border border-zinc-700"
@@ -369,17 +375,26 @@ export default function HostDashboard({
               {sessionOpen ? "● Live" : "○ Closed"}
             </span>
           </div>
-          <p className="text-xs text-zinc-500 mt-0.5 truncate">
-            {(counts.queued ?? 0) + (counts.getting_closer ?? 0) + (counts.on_deck ?? 0)}{" "}
-            up next &middot;{" "}
-            {counts.singing ?? 0} singing &middot;{" "}
-            {counts.hold ?? 0} hold &middot;{" "}
-            <span className="text-emerald-500">{counts.done ?? 0} done</span>
-          </p>
+          <form action="/api/host/logout" method="post" className="shrink-0">
+            <button className="text-xs text-zinc-400 hover:text-zinc-200" type="submit">
+              Sign out
+            </button>
+          </form>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+
+        {/* Row 2: stats line — can wrap on very narrow screens */}
+        <p className="text-xs text-zinc-500">
+          {(counts.queued ?? 0) + (counts.getting_closer ?? 0) + (counts.on_deck ?? 0)}{" "}
+          up next &middot;{" "}
+          {counts.singing ?? 0} singing &middot;{" "}
+          {counts.hold ?? 0} hold &middot;{" "}
+          <span className="text-emerald-500">{counts.done ?? 0} done</span>
+        </p>
+
+        {/* Row 3: action buttons — wrap freely */}
+        <div className="flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex rounded border border-zinc-800 overflow-hidden"
+            className="inline-flex rounded border border-zinc-800 overflow-hidden shrink-0"
             role="group"
             aria-label="Card size"
           >
@@ -436,11 +451,6 @@ export default function HostDashboard({
           >
             Stats
           </Link>
-          <form action="/api/host/logout" method="post">
-            <button className="text-xs text-zinc-400 hover:text-zinc-200" type="submit">
-              Sign out
-            </button>
-          </form>
         </div>
       </header>
 
@@ -647,6 +657,40 @@ function SortableRow({
 
   const isDone = singer.status === "done";
   const isHold = singer.status === "hold";
+
+  // Compact mode: single-line read-only row. No drag, no actions. Lets
+  // the host fit a much larger queue on screen for scanning. Switch to
+  // medium/large to interact.
+  if (density === "compact") {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={[
+          "flex items-center gap-2 rounded border bg-zinc-900 border-zinc-800 py-1 px-2 transition-opacity",
+          singer.status === "singing" ? "ring-1 ring-rose-500" : "",
+          isDone ? "opacity-40 bg-zinc-950" : "",
+          isHold ? "opacity-60" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <span
+          className={`text-xs font-semibold truncate min-w-0 flex-shrink-0 max-w-[40%] ${isDone ? "line-through text-zinc-500" : ""}`}
+        >
+          {singer.stage_name}
+        </span>
+        <span className="text-xs italic text-zinc-500 truncate flex-1 min-w-0">
+          {singer.song}
+        </span>
+        <span
+          className={`shrink-0 ${d.badge} rounded ${STATUS_COLORS[singer.status]}`}
+        >
+          {STATUS_LABEL[singer.status]}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
