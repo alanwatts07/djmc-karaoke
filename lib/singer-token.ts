@@ -2,7 +2,11 @@ import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 
 const COOKIE = "karaoke_singer";
-const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+// Chrome and Safari silently cap cookie expiry at 400 days regardless of
+// what we ask for, so this is effectively "as long as the browser will let
+// us." Anything beyond ~13 months requires the singer to clear cookies,
+// use incognito, switch devices, or have the browser auto-clean.
+const MAX_AGE = 60 * 60 * 24 * 400;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export async function getSingerToken(): Promise<string | null> {

@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { PublicSinger, SingerStatus } from "@/lib/supabase";
+import type {
+  PublicSinger,
+  PublicNight,
+  SingerStatus,
+} from "@/lib/supabase";
 import { publicTierLabel, publicTierSubtext } from "@/lib/tiers";
 import Footer from "../footer";
 
@@ -31,11 +35,20 @@ const STATUS_RANK: Record<SingerStatus, number> = {
   done: 5,
 };
 
-function sortSongs(songs: PublicSinger[]): PublicSinger[] {
+function sortActiveSongs(songs: PublicSinger[]): PublicSinger[] {
   return [...songs].sort((a, b) => {
     const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
     if (r !== 0) return r;
     return a.submitted_at.localeCompare(b.submitted_at);
+  });
+}
+
+function formatNightLabel(n: PublicNight): string {
+  if (n.name) return n.name;
+  return new Date(n.ended_at).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -45,16 +58,18 @@ function SetlistRow({
   onDelete,
   onEnterEdit,
   onLeaveEdit,
+  readOnly,
 }: {
   song: PublicSinger;
   onEdit: (newSong: string) => Promise<void>;
   onDelete: () => Promise<void>;
   onEnterEdit: () => void;
   onLeaveEdit: () => void;
+  readOnly?: boolean;
 }) {
   const isDone = song.status === "done";
   const isSinging = song.status === "singing";
-  const canEdit = !isDone && !isSinging;
+  const canEdit = !readOnly && !isDone && !isSinging;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(song.song);
@@ -186,15 +201,31 @@ function SetlistRow({
   );
 }
 
-export default function SongsView({ initial }: { initial: PublicSinger[] }) {
-  const [songs, setSongs] = useState<PublicSinger[]>(sortSongs(initial));
-  const editingRef = useRef(false); // pause polling while a row is being edited
+export default function SongsView({
+  initialSongs,
+  initialNights,
+  initialSessionOpen,
+}: {
+  initialSongs: PublicSinger[];
+  initialNights: PublicNight[];
+  initialSessionOpen: boolean;
+}) {
+  const [songs, setSongs] = useState<PublicSinger[]>(initialSongs);
+  const [nights, setNights] = useState<PublicNight[]>(initialNights);
+  const [sessionOpen, setSessionOpen] = useState(initialSessionOpen);
+  const editingRef = useRef(false);
 
   async function refetch() {
     const res = await fetch("/api/me", { cache: "no-store" });
     if (!res.ok) return;
-    const { songs: next } = (await res.json()) as { songs: PublicSinger[] };
-    setSongs(sortSongs(next));
+    const body = (await res.json()) as {
+      songs: PublicSinger[];
+      nights: PublicNight[];
+      sessionOpen: boolean;
+    };
+    setSongs(body.songs);
+    setNights(body.nights);
+    setSessionOpen(body.sessionOpen);
   }
 
   useEffect(() => {
@@ -204,8 +235,16 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
       try {
         const res = await fetch("/api/me", { cache: "no-store" });
         if (!res.ok) return;
-        const { songs: next } = (await res.json()) as { songs: PublicSinger[] };
-        if (!cancelled && !editingRef.current) setSongs(sortSongs(next));
+        const body = (await res.json()) as {
+          songs: PublicSinger[];
+          nights: PublicNight[];
+          sessionOpen: boolean;
+        };
+        if (!cancelled && !editingRef.current) {
+          setSongs(body.songs);
+          setNights(body.nights);
+          setSessionOpen(body.sessionOpen);
+        }
       } catch {
         // network blip
       }
@@ -243,12 +282,31 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
     await refetch();
   }
 
-  // Hero tier = highest-priority active song (or the most-recent done).
-  const hero = songs[0];
+  // Split songs into active session (no night_id) and per-night history.
+  const activeSongs = sortActiveSongs(songs.filter((s) => !s.night_id));
+  const pastByNight = new Map<string, PublicSinger[]>();
+  for (const s of songs) {
+    if (!s.night_id) continue;
+    const arr = pastByNight.get(s.night_id) ?? [];
+    arr.push(s);
+    pastByNight.set(s.night_id, arr);
+  }
+
+  // Sort past nights newest-first.
+  const sortedPastNights = nights
+    .filter((n) => pastByNight.has(n.id))
+    .sort((a, b) => b.ended_at.localeCompare(a.ended_at));
+
+  // Hero = top active song (if any), else most recent past song.
+  const hero =
+    activeSongs[0] ??
+    songs.filter((s) => s.night_id).slice(-1)[0] ??
+    songs[songs.length - 1];
   const name = hero?.stage_name ?? "";
 
-  const doneCount = songs.filter((s) => s.status === "done").length;
-  const upcomingCount = songs.length - doneCount;
+  const activeDoneCount = activeSongs.filter((s) => s.status === "done").length;
+  const activeUpcomingCount = activeSongs.length - activeDoneCount;
+  const totalPastSongs = songs.length - activeSongs.length;
 
   return (
     <main
@@ -259,7 +317,7 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
           {name}
         </p>
 
-        {hero && (
+        {hero && activeSongs.length > 0 && (
           <div className="text-center mt-4">
             <h1 className="text-5xl font-bold tracking-tight mb-3">
               {publicTierLabel(hero.status)}
@@ -270,43 +328,95 @@ export default function SongsView({ initial }: { initial: PublicSinger[] }) {
           </div>
         )}
 
-        <div className="mt-8">
-          <div className="flex items-baseline justify-between mb-2">
-            <p className="text-xs uppercase tracking-widest text-white/50">
-              Your setlist
-            </p>
-            <p className="text-xs text-white/40">
-              {doneCount > 0 && `${doneCount} sung`}
-              {doneCount > 0 && upcomingCount > 0 && " · "}
-              {upcomingCount > 0 && `${upcomingCount} to go`}
+        {activeSongs.length === 0 && totalPastSongs > 0 && (
+          <div className="text-center mt-4">
+            <h1 className="text-4xl font-bold tracking-tight mb-3">
+              Welcome back
+            </h1>
+            <p className="text-white/80 text-base leading-relaxed">
+              No songs queued right now.{" "}
+              {sessionOpen
+                ? "Tap below to add one."
+                : "We'll be open again soon."}
             </p>
           </div>
+        )}
 
-          <ul className="space-y-1.5">
-            {songs.map((s) => (
-              <SetlistRow
-                key={s.id}
-                song={s}
-                onEdit={(next) => editSong(s.id, next)}
-                onDelete={() => deleteSong(s.id)}
-                onEnterEdit={() => {
-                  editingRef.current = true;
-                }}
-                onLeaveEdit={() => {
-                  editingRef.current = false;
-                }}
-              />
-            ))}
-          </ul>
-        </div>
+        {/* Active session block */}
+        {activeSongs.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="text-xs uppercase tracking-widest text-white/50">
+                Tonight
+              </p>
+              <p className="text-xs text-white/40">
+                {activeDoneCount > 0 && `${activeDoneCount} sung`}
+                {activeDoneCount > 0 && activeUpcomingCount > 0 && " · "}
+                {activeUpcomingCount > 0 && `${activeUpcomingCount} to go`}
+              </p>
+            </div>
+            <ul className="space-y-1.5">
+              {activeSongs.map((s) => (
+                <SetlistRow
+                  key={s.id}
+                  song={s}
+                  onEdit={(next) => editSong(s.id, next)}
+                  onDelete={() => deleteSong(s.id)}
+                  onEnterEdit={() => {
+                    editingRef.current = true;
+                  }}
+                  onLeaveEdit={() => {
+                    editingRef.current = false;
+                  }}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Past nights — read-only, locked rows */}
+        {sortedPastNights.map((n) => {
+          const nightSongs = pastByNight.get(n.id) ?? [];
+          return (
+            <div key={n.id} className="mt-8">
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-xs uppercase tracking-widest text-white/50">
+                  {formatNightLabel(n)}
+                </p>
+                <p className="text-xs text-white/40">
+                  {nightSongs.length} song{nightSongs.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <ul className="space-y-1.5">
+                {nightSongs.map((s) => (
+                  <SetlistRow
+                    key={s.id}
+                    song={s}
+                    onEdit={async () => {}}
+                    onDelete={async () => {}}
+                    onEnterEdit={() => {}}
+                    onLeaveEdit={() => {}}
+                    readOnly
+                  />
+                ))}
+              </ul>
+            </div>
+          );
+        })}
 
         <div className="mt-8 flex flex-col items-center gap-2">
-          <Link
-            href="/?add=1"
-            className="w-full text-center rounded-lg bg-white text-purple-900 hover:bg-purple-100 font-semibold text-lg py-3 transition"
-          >
-            + Add another song
-          </Link>
+          {sessionOpen ? (
+            <Link
+              href="/?add=1"
+              className="w-full text-center rounded-lg bg-white text-purple-900 hover:bg-purple-100 font-semibold text-lg py-3 transition"
+            >
+              + Add another song
+            </Link>
+          ) : (
+            <div className="w-full text-center rounded-lg bg-white/10 text-white/60 font-semibold text-base py-3 cursor-not-allowed">
+              Sign-ups closed — check back later
+            </div>
+          )}
           <p className="text-xs text-white/50 mt-2">
             Keep this page open — it updates on its own.
           </p>

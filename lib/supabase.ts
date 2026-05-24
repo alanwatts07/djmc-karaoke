@@ -47,8 +47,10 @@ export type Night = {
 
 export type PublicSinger = Pick<
   Singer,
-  "id" | "stage_name" | "song" | "submitted_at" | "status"
+  "id" | "stage_name" | "song" | "submitted_at" | "status" | "night_id"
 >;
+
+export type PublicNight = Pick<Night, "id" | "name" | "ended_at">;
 
 export function toPublicSinger(s: Singer): PublicSinger {
   return {
@@ -57,5 +59,6 @@ export function toPublicSinger(s: Singer): PublicSinger {
     song: s.song,
     submitted_at: s.submitted_at,
     status: s.status,
+    night_id: s.night_id,
   };
 }

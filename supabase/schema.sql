@@ -188,9 +188,26 @@ alter table public.singers
 create index if not exists singers_night_id_idx     on public.singers (night_id);
 create index if not exists singers_archived_at_idx  on public.singers (archived_at);
 
--- Lock the table down. No anon policies = no anon access. The server uses
+-- ===========================================================================
+-- App state — single-row table that holds runtime flags. Currently only used
+-- for session_open (whether public submissions are accepted right now).
+-- Defaults to TRUE so deploying this migration doesn't break in-flight nights.
+-- ===========================================================================
+create table if not exists public.app_state (
+  id           text primary key default 'singleton',
+  session_open boolean not null default true,
+  constraint app_state_singleton check (id = 'singleton')
+);
+
+insert into public.app_state (id, session_open)
+values ('singleton', true)
+on conflict (id) do nothing;
+
+-- Lock the tables down. No anon policies = no anon access. The server uses
 -- the service role key, which bypasses RLS.
-alter table public.singers enable row level security;
-alter table public.nights  enable row level security;
-revoke all on public.singers from anon, authenticated;
-revoke all on public.nights  from anon, authenticated;
+alter table public.singers   enable row level security;
+alter table public.nights    enable row level security;
+alter table public.app_state enable row level security;
+revoke all on public.singers   from anon, authenticated;
+revoke all on public.nights    from anon, authenticated;
+revoke all on public.app_state from anon, authenticated;

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db, type Singer } from "@/lib/supabase";
 import { ensureSingerToken, getSingerToken } from "@/lib/singer-token";
 import { fairInterleave } from "@/lib/queue-ops";
+import { isSessionOpen } from "@/lib/session";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
 
@@ -15,6 +16,13 @@ const MAX_SUBMISSIONS_PER_HOUR = 6;
 
 async function submit(formData: FormData) {
   "use server";
+
+  // Hard gate: if the host hasn't opened the night yet, refuse the submission
+  // entirely. Singers can still scan/visit the link — they just see the
+  // "not open yet" screen.
+  if (!(await isSessionOpen())) {
+    redirect("/?error=closed");
+  }
 
   const stage_name = String(formData.get("stage_name") ?? "").trim();
   const song = String(formData.get("song") ?? "").trim();
@@ -69,8 +77,8 @@ export default async function Home({
 }) {
   const { error, rename, add } = await searchParams;
 
-  // If we recognize the singer (cookie + previous row), skip the name input
-  // and use the stored name. They can hit "not me?" to reset.
+  // Look up the cookie FIRST — we need knownName for both the closed-state
+  // setlist link and the open-state form pre-fill.
   let knownName = "";
   const token = await getSingerToken();
   if (token && !rename) {
@@ -82,20 +90,68 @@ export default async function Home({
       .limit(1)
       .maybeSingle<Pick<Singer, "stage_name">>();
     if (data) knownName = data.stage_name;
+  }
 
-    // Returning singer with songs still in play — bounce them to /me so they
-    // see their setlist by default instead of the submit form. Bypass with
-    // ?add=1 (the "+ Add another song" button passes that).
-    if (knownName && add === undefined && error === undefined) {
-      const { data: active } = await db
-        .from("singers")
-        .select("id")
-        .eq("singer_token", token)
-        .neq("status", "done")
-        .limit(1)
-        .maybeSingle();
-      if (active) redirect("/me");
-    }
+  const sessionOpen = await isSessionOpen();
+
+  // Closed: render the promo splash. If the visitor is a returning singer,
+  // give them a button into their setlist so they don't think we forgot them.
+  if (!sessionOpen) {
+    return (
+      <main className="flex-1 flex flex-col items-center p-6 pt-12 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">
+        <div className="w-full max-w-sm text-center">
+          <Image
+            src="/djmc-logo.png"
+            alt="DJ MC Karaoke"
+            width={240}
+            height={240}
+            priority
+            className="mx-auto mb-6 h-56 w-56 drop-shadow-[0_10px_30px_rgba(236,72,153,0.45)]"
+          />
+
+          <p className="text-xs uppercase tracking-[0.35em] text-fuchsia-300 mb-1">
+            Karaoke Night
+          </p>
+          <h1 className="text-5xl font-extrabold tracking-tight mb-3">
+            with <span className="text-fuchsia-400">DJ MC</span>
+          </h1>
+
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-purple-100 mb-6 border border-white/15">
+            <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+            Sign-ups open when the night kicks off
+          </div>
+
+          {knownName ? (
+            <>
+              <p className="text-purple-200 text-base leading-relaxed mb-4 max-w-xs mx-auto">
+                Hey {knownName} — your setlist from previous nights is still
+                here. Tap below to see it.
+              </p>
+              <Link
+                href="/me"
+                className="block w-full rounded-lg bg-white text-purple-900 hover:bg-purple-100 font-semibold py-3 mb-8"
+              >
+                View your setlist
+              </Link>
+            </>
+          ) : (
+            <p className="text-purple-200 text-base leading-relaxed mb-8 max-w-xs mx-auto">
+              You're early — or it's a different night. Either way, the page
+              below is yours. Tip, book me for an event, or peep what else
+              I'm into.
+            </p>
+          )}
+
+          <Footer />
+        </div>
+      </main>
+    );
+  }
+
+  // Open + returning singer: bounce them to /me so they see their setlist
+  // (with history across past nights) by default. Bypass with ?add=1.
+  if (knownName && add === undefined && error === undefined) {
+    redirect("/me");
   }
 
   const errorMessage =
@@ -107,9 +163,11 @@ export default async function Home({
           ? `You already have ${MAX_ACTIVE_SONGS} songs in your setlist. Wait for one to finish before adding another.`
           : error === "rate"
             ? "Whoa — that's a lot of submissions. Take a breather and try again in a bit."
-            : error === "server"
-              ? "Couldn't submit. Try again."
-              : null;
+            : error === "closed"
+              ? "Sign-ups just closed. Catch you next time."
+              : error === "server"
+                ? "Couldn't submit. Try again."
+                : null;
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">

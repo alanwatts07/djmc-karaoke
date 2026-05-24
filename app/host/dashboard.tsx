@@ -50,8 +50,15 @@ async function api(path: string, body?: unknown): Promise<boolean> {
   return res.ok;
 }
 
-export default function HostDashboard({ initial }: { initial: Singer[] }) {
+export default function HostDashboard({
+  initial,
+  initialSessionOpen,
+}: {
+  initial: Singer[];
+  initialSessionOpen: boolean;
+}) {
   const [singers, setSingers] = useState<Singer[]>(initial);
+  const [sessionOpen, setSessionOpen] = useState(initialSessionOpen);
   const dirtyRef = useRef(false); // local edits in flight; pause polling overwrites
 
   const sensors = useSensors(
@@ -169,20 +176,30 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
     await refetch();
   }
 
+  async function beginNight() {
+    dirtyRef.current = true;
+    const ok = await api("/api/host/begin-night", {});
+    dirtyRef.current = false;
+    if (ok) setSessionOpen(true);
+    else alert("Couldn't begin the night — try again.");
+  }
+
   async function endNight() {
     const totalSung = counts.done ?? 0;
-    if (
-      !confirm(
-        `End the night and archive ${singers.length} singer${singers.length === 1 ? "" : "s"} (${totalSung} sung)? Stats will be locked in and the active queue cleared.`,
-      )
-    )
-      return;
+    const message =
+      singers.length === 0
+        ? `Close sign-ups? Sharing the link will show the promo page until you hit Begin again.`
+        : `End the night and archive ${singers.length} singer${singers.length === 1 ? "" : "s"} (${totalSung} sung)? Stats will be locked in and the active queue cleared.`;
+    if (!confirm(message)) return;
     dirtyRef.current = true;
     const ok = await api("/api/host/end-night", {});
     dirtyRef.current = false;
     if (ok) {
+      setSessionOpen(false);
       await refetch();
-      alert("Night archived. See /host/stats for the recap.");
+      if (singers.length > 0) {
+        alert("Night archived. See /host/stats for the recap.");
+      }
     } else {
       alert("Couldn't end the night — try again or check the server logs.");
     }
@@ -210,7 +227,19 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
     <main className="flex-1 bg-zinc-950 text-zinc-100">
       <header className="border-b border-zinc-800 px-4 md:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 bg-zinc-950/95 backdrop-blur z-10">
         <div className="min-w-0">
-          <h1 className="text-lg md:text-xl font-semibold">Host dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg md:text-xl font-semibold">Host dashboard</h1>
+            <span
+              className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                sessionOpen
+                  ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700/60"
+                  : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+              }`}
+              title={sessionOpen ? "Public can submit" : "Public submissions blocked"}
+            >
+              {sessionOpen ? "● Live" : "○ Closed"}
+            </span>
+          </div>
           <p className="text-xs text-zinc-500 mt-0.5 truncate">
             {(counts.queued ?? 0) + (counts.getting_closer ?? 0) + (counts.on_deck ?? 0)}{" "}
             up next &middot;{" "}
@@ -229,14 +258,27 @@ export default function HostDashboard({ initial }: { initial: Singer[] }) {
             Archive done
             {counts.done ? ` (${counts.done})` : ""}
           </button>
-          <button
-            onClick={endNight}
-            disabled={singers.length === 0}
-            className="text-xs px-2.5 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-            title="Lock in tonight's stats and clear the active queue"
-          >
-            End the night
-          </button>
+          {sessionOpen ? (
+            <button
+              onClick={endNight}
+              className="text-xs px-2.5 py-1.5 rounded bg-rose-900 hover:bg-rose-800 text-rose-100 font-medium"
+              title={
+                singers.length === 0
+                  ? "Stop accepting submissions"
+                  : "Archive the night, lock in stats, clear active queue"
+              }
+            >
+              ■ End the night
+            </button>
+          ) : (
+            <button
+              onClick={beginNight}
+              className="text-xs px-2.5 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 font-medium"
+              title="Open the link to public sign-ups"
+            >
+              ▶ Begin night
+            </button>
+          )}
           <Link
             href="/host/stats"
             className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700"

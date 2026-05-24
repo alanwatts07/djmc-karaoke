@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, type Singer } from "@/lib/supabase";
 import { isHostAuthed } from "@/lib/host-auth";
+import { setSessionOpen } from "@/lib/session";
 
 // Closes out the current bar night. Computes stats from every row that
 // doesn't already belong to a night (active queue + soft-archived rows),
@@ -30,8 +31,12 @@ export async function POST(req: Request) {
     console.error("end-night fetch failed", fetchErr);
     return NextResponse.json({ error: "server" }, { status: 500 });
   }
+  // No active rows: nothing to archive, but still flip the session closed
+  // so this can be used as a "stop accepting submissions" toggle even when
+  // nobody has signed up yet.
   if (!rows || rows.length === 0) {
-    return NextResponse.json({ error: "empty_night" }, { status: 400 });
+    await setSessionOpen(false);
+    return NextResponse.json({ ok: true, archived: false });
   }
 
   const sung = rows.filter((r) => r.started_singing_at !== null);
@@ -97,8 +102,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "server" }, { status: 500 });
   }
 
+  // Flip the session closed so the / page goes back to the promo splash
+  // and public submissions are refused until Begin is hit again.
+  await setSessionOpen(false);
+
   return NextResponse.json({
     ok: true,
+    archived: true,
     night_id: night.id,
     total_signups: rows.length,
     total_sung: sung.length,
