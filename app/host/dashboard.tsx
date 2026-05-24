@@ -51,6 +51,60 @@ async function api(path: string, body?: unknown): Promise<boolean> {
   return res.ok;
 }
 
+type Density = "compact" | "medium" | "large";
+const DENSITY_STORAGE_KEY = "karaoke_density";
+
+// All the per-element sizing knobs live here so SortableRow can stay clean.
+// Compact = scan the whole list. Medium = default. Large = read across the room.
+const DENSITY_CLASSES: Record<
+  Density,
+  {
+    rowPadding: string;
+    nameText: string;
+    songText: string;
+    actionButton: string;
+    badge: string;
+    handle: string;
+    handleIcon: string;
+    actionsGap: string;
+    actionsMargin: string;
+  }
+> = {
+  compact: {
+    rowPadding: "py-1.5 pr-2",
+    nameText: "text-sm",
+    songText: "text-xs",
+    actionButton: "text-[10px] px-1.5 py-0.5",
+    badge: "text-[9px] px-1.5 py-0.5",
+    handle: "px-2.5 min-w-[36px]",
+    handleIcon: "text-sm",
+    actionsGap: "gap-1",
+    actionsMargin: "mt-1.5",
+  },
+  medium: {
+    rowPadding: "py-3 pr-3",
+    nameText: "text-base",
+    songText: "text-sm",
+    actionButton: "text-xs px-2.5 py-1",
+    badge: "text-xs px-2 py-0.5",
+    handle: "px-4 min-w-[44px]",
+    handleIcon: "text-lg",
+    actionsGap: "gap-1.5",
+    actionsMargin: "mt-3",
+  },
+  large: {
+    rowPadding: "py-4 pr-4",
+    nameText: "text-lg",
+    songText: "text-base",
+    actionButton: "text-sm px-3 py-1.5",
+    badge: "text-sm px-2.5 py-0.5",
+    handle: "px-5 min-w-[52px]",
+    handleIcon: "text-xl",
+    actionsGap: "gap-2",
+    actionsMargin: "mt-4",
+  },
+};
+
 export default function HostDashboard({
   initial,
   initialSessionOpen,
@@ -60,7 +114,26 @@ export default function HostDashboard({
 }) {
   const [singers, setSingers] = useState<Singer[]>(initial);
   const [sessionOpen, setSessionOpen] = useState(initialSessionOpen);
+  const [density, setDensity] = useState<Density>("medium");
   const dirtyRef = useRef(false); // local edits in flight; pause polling overwrites
+
+  // Hydrate density preference from localStorage on first mount. Done in an
+  // effect (rather than the useState initializer) so SSR + client agree on
+  // the initial render and we avoid hydration mismatch warnings.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(DENSITY_STORAGE_KEY);
+    if (saved === "compact" || saved === "medium" || saved === "large") {
+      setDensity(saved);
+    }
+  }, []);
+
+  function pickDensity(next: Density) {
+    setDensity(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DENSITY_STORAGE_KEY, next);
+    }
+  }
 
   const sensors = useSensors(
     // Mouse: 6px of movement triggers drag — same as before.
@@ -305,6 +378,27 @@ export default function HostDashboard({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <div
+            className="inline-flex rounded border border-zinc-800 overflow-hidden"
+            role="group"
+            aria-label="Card size"
+          >
+            {(["compact", "medium", "large"] as Density[]).map((d) => (
+              <button
+                key={d}
+                onClick={() => pickDensity(d)}
+                aria-pressed={density === d}
+                title={`${d[0].toUpperCase()}${d.slice(1)} card size`}
+                className={`px-2 py-1 text-[10px] uppercase tracking-wider ${
+                  density === d
+                    ? "bg-zinc-700 text-zinc-100"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+              >
+                {d === "compact" ? "S" : d === "medium" ? "M" : "L"}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => clearQueue("completed")}
             disabled={!counts.done}
@@ -372,6 +466,7 @@ export default function HostDashboard({
               <SortableRow
                 key={singer.id}
                 singer={singer}
+                density={density}
                 onStatus={(s) => setStatus(singer.id, s)}
                 onExpress={() => express(singer.id)}
                 onRemove={() => remove(singer.id)}
@@ -469,6 +564,7 @@ function ManualAdd({
 
 function SortableRow({
   singer,
+  density,
   onStatus,
   onExpress,
   onRemove,
@@ -477,6 +573,7 @@ function SortableRow({
   onEditInfo,
 }: {
   singer: Singer;
+  density: Density;
   onStatus: (s: SingerStatus) => void;
   onExpress: () => void;
   onRemove: () => void;
@@ -484,6 +581,7 @@ function SortableRow({
   onTip: (amt: number) => void;
   onEditInfo: (stage_name: string, song: string) => Promise<void>;
 }) {
+  const d = DENSITY_CLASSES[density];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: singer.id });
 
@@ -570,67 +668,70 @@ function SortableRow({
           aria-label="Press and hold to reorder"
           title="Press and hold (or click and drag on desktop) to reorder"
           className={[
-            "px-4 min-w-[44px] flex items-center justify-center",
+            d.handle,
+            "flex items-center justify-center",
             "cursor-grab active:cursor-grabbing touch-none select-none",
             "text-zinc-500 hover:text-zinc-200 active:text-fuchsia-400",
             "border-r border-zinc-800/60",
             isDragging ? "bg-fuchsia-900/40" : "hover:bg-zinc-800/60",
           ].join(" ")}
         >
-          <span className="text-lg leading-none">⠿</span>
+          <span className={`${d.handleIcon} leading-none`}>⠿</span>
         </button>
 
-        <div className="flex-1 py-3 pr-3">
+        <div className={`flex-1 ${d.rowPadding}`}>
           <div className="flex items-baseline justify-between gap-3">
             <div className="min-w-0">
-              <p className={`font-semibold truncate ${isDone ? "line-through text-zinc-500" : ""}`}>
+              <p
+                className={`font-semibold truncate ${d.nameText} ${isDone ? "line-through text-zinc-500" : ""}`}
+              >
                 {singer.stage_name}
               </p>
-              <p className="text-sm text-zinc-400 truncate italic">{singer.song}</p>
+              <p className={`text-zinc-400 truncate italic ${d.songText}`}>
+                {singer.song}
+              </p>
             </div>
-            <span
-              className={`text-xs px-2 py-0.5 rounded ${STATUS_COLORS[singer.status]}`}
-            >
+            <span className={`${d.badge} rounded ${STATUS_COLORS[singer.status]}`}>
               {STATUS_LABEL[singer.status]}
             </span>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <div className={`${d.actionsMargin} flex flex-wrap ${d.actionsGap}`}>
             <button
               onClick={onExpress}
-              className="text-xs px-2.5 py-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-medium"
+              className={`${d.actionButton} rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-medium`}
               title="Bump to the front of the queue (after current singer)"
             >
               Express Lane
             </button>
             <button
               onClick={() => onStatus("singing")}
-              className="text-xs px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500"
+              className={`${d.actionButton} rounded bg-rose-600 hover:bg-rose-500`}
             >
               Now singing
             </button>
             <button
               onClick={() => onStatus("done")}
-              className="text-xs px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-600"
+              className={`${d.actionButton} rounded bg-emerald-700 hover:bg-emerald-600`}
             >
               Done
             </button>
             <button
               onClick={() => onStatus(singer.status === "hold" ? "queued" : "hold")}
-              className="text-xs px-2.5 py-1 rounded bg-amber-700 hover:bg-amber-600"
+              className={`${d.actionButton} rounded bg-amber-700 hover:bg-amber-600`}
             >
               {singer.status === "hold" ? "Resume" : "Hold"}
             </button>
             <button
               onClick={() => setEditOpen((o) => !o)}
-              className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              className={`${d.actionButton} rounded bg-zinc-800 hover:bg-zinc-700`}
               title="Edit name + song"
             >
               ✏️ Edit
             </button>
             <button
               onClick={() => setNotesOpen((o) => !o)}
-              className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              className={`${d.actionButton} rounded bg-zinc-800 hover:bg-zinc-700`}
             >
               Notes
               {singer.notes ? " •" : ""}
@@ -641,14 +742,14 @@ function SortableRow({
                 const n = amt ? Number(amt) : NaN;
                 if (Number.isFinite(n) && n !== 0) onTip(n);
               }}
-              className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
+              className={`${d.actionButton} rounded bg-zinc-800 hover:bg-zinc-700`}
               title={`Tip total: $${singer.tip_total}`}
             >
               Tip {singer.tip_total > 0 ? `$${singer.tip_total}` : ""}
             </button>
             <button
               onClick={onRemove}
-              className="text-xs px-2.5 py-1 rounded bg-zinc-800 hover:bg-rose-900 text-zinc-400 hover:text-rose-200 ml-auto"
+              className={`${d.actionButton} rounded bg-zinc-800 hover:bg-rose-900 text-zinc-400 hover:text-rose-200 ml-auto`}
             >
               Remove
             </button>
