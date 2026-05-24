@@ -94,20 +94,65 @@ create trigger singers_assign_position
   before insert on public.singers
   for each row execute function public.assign_queue_position();
 
--- Atomic queue renumber. Pass the full ordered id list; this function takes
--- the advisory lock, parks every row at a negative slot in pass 1 so the
--- unique constraint can't trip mid-renumber, then writes the final positive
--- positions in pass 2. Both passes share one transaction.
+-- One-time fix for the cross-session collision bug: any rows from closed
+-- nights (or mid-night soft-archives) still sitting in the active 1..N range
+-- get pushed to a high "archive zone" so future set_queue_order calls for
+-- the active session can write 1..N without unique-constraint collisions.
+-- Idempotent — the < 1000000 guard means rerunning is a no-op.
+update public.singers
+set queue_position = 1000000 + queue_position
+where queue_position between 1 and 999999
+  and (night_id is not null or archived_at is not null);
+
+-- Atomic queue renumber with self-healing collision protection.
+--   Phase 1: park every listed row at a negative slot (so we can freely
+--            write positive values without the deferred unique constraint
+--            tripping on the listed rows' own current positions).
+--   Phase 2: evict any OTHER rows currently sitting in 1..N to the archive
+--            zone (1_000_000+) so they can't collide with the final write.
+--            This catches closed-night and soft-archived rows; once moved,
+--            they stay parked because future calls won't touch them.
+--   Phase 3: write the listed rows to their final 1..N positions.
+-- All three phases share one transaction; the constraint is checked at
+-- commit, after all rows are at their final non-colliding values.
 create or replace function public.set_queue_order(ordered_ids uuid[])
 returns void language plpgsql as $$
+declare
+  n int;
+  archive_top int;
 begin
   perform pg_advisory_xact_lock(hashtext('singers_queue'));
+  n := coalesce(array_length(ordered_ids, 1), 0);
+  if n = 0 then return; end if;
 
+  -- Phase 1: park listed rows at negative slots.
   update public.singers
     set queue_position = -t.ord
     from unnest(ordered_ids) with ordinality as t(uid, ord)
     where singers.id = t.uid;
 
+  -- Phase 2: evict any colliders sitting in 1..N to the archive zone.
+  -- archive_top = highest position currently in use up there (or 999999 if
+  -- the zone is empty), so evicted rows get archive_top + 1, +2, +3, ...
+  -- guaranteed unique against existing archive-zone occupants.
+  select coalesce(max(queue_position), 999999)
+    into archive_top
+    from public.singers
+    where queue_position >= 1000000;
+
+  with collisions as (
+    select id,
+           row_number() over (order by queue_position) as rn
+    from public.singers
+    where queue_position between 1 and n
+      and id <> all(ordered_ids)
+  )
+  update public.singers s
+    set queue_position = archive_top + c.rn
+    from collisions c
+    where s.id = c.id;
+
+  -- Phase 3: write listed rows to their final 1..N positions.
   update public.singers
     set queue_position = t.ord
     from unnest(ordered_ids) with ordinality as t(uid, ord)

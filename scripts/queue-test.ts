@@ -1,9 +1,23 @@
 /*
- * Queue simulation. Runs against your real Supabase project — it WILL clear
- * the singers table. Don't run during a live night.
+ * Queue simulation. ⚠️ DESTRUCTIVE — wipes the singers table. Closed nights
+ * survive via the `nights` table (aggregate stats), but the per-singer rows
+ * for those nights are deleted. Requires --confirm-wipe to actually run.
  *
- *   bun run test:queue
+ *   bun run test:queue --confirm-wipe
  */
+if (!process.argv.includes("--confirm-wipe")) {
+  console.error(
+    "Refusing to run — this script DELETES every row in the singers table.",
+  );
+  console.error(
+    "Past nights' aggregate stats survive (they're on the nights table),",
+  );
+  console.error("but per-singer rows are gone forever.");
+  console.error("");
+  console.error("If you really want to do this, re-run with --confirm-wipe.");
+  process.exit(1);
+}
+
 import { db, type Singer } from "@/lib/supabase";
 import { fairInterleave } from "@/lib/queue-ops";
 import { reconcileStatuses } from "@/lib/queue-ops";

@@ -85,6 +85,23 @@ export async function fairInterleave(): Promise<void> {
     if (!placed) rotations.push([row]);
   }
 
+  // Boundary smoothing: if rotation[i]'s last singer == rotation[i+1]'s first
+  // singer, swap rotation[i+1]'s first with a later non-matching row in the
+  // same rotation. Fixes the case where someone with N songs ends up at the
+  // tail of rotation N and the head of rotation N+1 (back-to-back at the
+  // boundary). Preserves the one-per-rotation invariant.
+  for (let i = 0; i < rotations.length - 1; i++) {
+    const rot = rotations[i];
+    const next = rotations[i + 1];
+    if (rot.length === 0 || next.length < 2) continue;
+    const tailKey = singerKey(rot[rot.length - 1]);
+    if (singerKey(next[0]) !== tailKey) continue;
+    const swapIdx = next.findIndex((r, j) => j > 0 && singerKey(r) !== tailKey);
+    if (swapIdx > 0) {
+      [next[0], next[swapIdx]] = [next[swapIdx], next[0]];
+    }
+  }
+
   // Final queue order: whoever is currently singing → rotations 1..N flattened
   // → hold (skipped singers, will rejoin) → done (history).
   const newOrder = [...singing, ...rotations.flat(), ...hold, ...done];
