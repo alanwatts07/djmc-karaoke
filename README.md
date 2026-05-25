@@ -21,12 +21,15 @@ Self-serve karaoke sign-up app. Singers scan a QR, drop their name + song, and w
 
 ```bash
 cp .env.example .env.local
-# fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-# pick a HOST_PASSWORD you'll remember
-# generate HOST_COOKIE_SECRET:  openssl rand -hex 32
+# Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+# Required: HOST_PASSWORD (you pick it), HOST_COOKIE_SECRET (`openssl rand -hex 32`)
+# Optional branding: NEXT_PUBLIC_DJ_NAME, NEXT_PUBLIC_VENMO_HANDLE, NEXT_PUBLIC_INSTAGRAM_HANDLE,
+#   NEXT_PUBLIC_WEBSITE, NEXT_PUBLIC_BOOKING_EMAIL, NEXT_PUBLIC_RADIO_URL
 ```
 
 The service role key bypasses RLS — never expose it to the browser. Only the routes under `app/api/` use it.
+
+Branding env vars control what appears in the singer page footer (Venmo button, IG link, booking email, etc). Defaults are placeholders so the public repo stays generic — set real values in Vercel for production.
 
 ### 3. Run
 
@@ -69,10 +72,18 @@ Visit:
 
 ```bash
 vercel link
+# Required
 vercel env add NEXT_PUBLIC_SUPABASE_URL
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
 vercel env add SUPABASE_SERVICE_ROLE_KEY
 vercel env add HOST_PASSWORD
 vercel env add HOST_COOKIE_SECRET
+# Optional (branding / contact)
+vercel env add NEXT_PUBLIC_DJ_NAME
+vercel env add NEXT_PUBLIC_VENMO_HANDLE
+vercel env add NEXT_PUBLIC_INSTAGRAM_HANDLE
+vercel env add NEXT_PUBLIC_WEBSITE
+vercel env add NEXT_PUBLIC_BOOKING_EMAIL
+vercel env add NEXT_PUBLIC_RADIO_URL
 vercel deploy --prod
 ```
