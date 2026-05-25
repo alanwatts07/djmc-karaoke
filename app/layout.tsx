@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,62 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DJ_NAME = process.env.NEXT_PUBLIC_DJ_NAME ?? "DJ MC";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kara.ftrai.uk";
+
+const SITE_TITLE = `Karaoke Night with ${DJ_NAME}`;
+const SITE_DESCRIPTION = `Self-serve karaoke sign-ups. Scan the QR, drop your song, watch your setlist update live. Hosted by ${DJ_NAME}.`;
+
 export const metadata: Metadata = {
-  title: "Karaoke",
-  description: "Get on the mic.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${DJ_NAME} Karaoke`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: `${DJ_NAME} Karaoke`,
+  authors: [{ name: DJ_NAME }],
+  keywords: ["karaoke", "DJ", DJ_NAME, "live sign-up", "queue"],
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: `${DJ_NAME} Karaoke`,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/preview.png",
+        width: 811,
+        height: 882,
+        alt: `${DJ_NAME} Karaoke`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/preview.png"],
+  },
+  appleWebApp: {
+    capable: true,
+    title: `${DJ_NAME} Karaoke`,
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#581c87", // purple-900, matches the splash gradient base
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
