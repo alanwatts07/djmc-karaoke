@@ -23,6 +23,16 @@ Built and run live for **DJ MC** at The Nerve in Haverhill, MA. See [`plan.md`](
 
 ---
 
+## Host dashboard
+
+<p align="center">
+  <img src="public/preview2.png" alt="Host dashboard with live test data" width="900" />
+</p>
+
+Live status pill ("● LIVE @ The Nerve"), running totals, density toggle, manual add, lifecycle controls per row. Drag handle on the left of every row uses long-press activation on touch so scrolling doesn't accidentally reorder.
+
+---
+
 ## Stack
 
 - **Next.js 16** — App Router, React 19, Turbopack
