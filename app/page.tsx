@@ -5,6 +5,11 @@ import { db, type Singer } from "@/lib/supabase";
 import { ensureSingerToken, getSingerToken } from "@/lib/singer-token";
 import { fairInterleave } from "@/lib/queue-ops";
 import { isSessionOpen } from "@/lib/session";
+import {
+  getUpcomingEvents,
+  formatEventDate,
+  formatEventStart,
+} from "@/lib/schedule";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
 
@@ -136,11 +141,38 @@ export default async function Home({
             </>
           ) : (
             <p className="text-purple-200 text-base leading-relaxed mb-8 max-w-xs mx-auto">
-              You're early — or it's a different night. Either way, the page
-              below is yours. Tip, book me for an event, or peep what else
-              I'm into.
+              You're early — or it's a different night. Catch the next show:
             </p>
           )}
+
+          {(() => {
+            const events = getUpcomingEvents(3);
+            return (
+              <div className="text-left space-y-2 mb-8">
+                <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-300 text-center mb-3">
+                  Upcoming shows
+                </p>
+                {events.map((e, i) => (
+                  <div
+                    key={i}
+                    className="flex items-baseline justify-between gap-3 rounded-lg bg-white/5 border border-white/10 px-4 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">
+                        {formatEventDate(e.start)}
+                      </p>
+                      <p className="text-xs text-purple-300 truncate">
+                        {e.venue} · {e.city}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-xs text-white/80">
+                      {formatEventStart(e.start)}–{e.endLabel}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <Footer />
         </div>

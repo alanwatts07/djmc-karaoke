@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, type Singer } from "@/lib/supabase";
 import { isHostAuthed } from "@/lib/host-auth";
-import { setSessionOpen } from "@/lib/session";
+import { getSessionState, setSessionOpen } from "@/lib/session";
 
 // Closes out the current bar night. Computes stats from every row that
 // doesn't already belong to a night (active queue + soft-archived rows),
@@ -21,6 +21,13 @@ export async function POST(req: Request) {
   }
 
   const { name } = (await req.json().catch(() => ({}))) as { name?: string };
+
+  // If host didn't pass an explicit name, default to "{venue} · {date}" using
+  // whatever venue was set on Begin night. Easier to scan in /host/stats.
+  const sessionState = await getSessionState();
+  const defaultName = sessionState.venue
+    ? `${sessionState.venue} · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+    : null;
 
   const { data: rows, error: fetchErr } = await db
     .from("singers")
@@ -73,7 +80,7 @@ export async function POST(req: Request) {
   const { data: night, error: insertErr } = await db
     .from("nights")
     .insert({
-      name: name?.trim() || null,
+      name: name?.trim() || defaultName,
       started_at: startedAt?.toISOString() ?? null,
       ended_at: lastDoneAt?.toISOString() ?? new Date().toISOString(),
       total_signups: rows.length,

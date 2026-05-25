@@ -111,12 +111,15 @@ const DENSITY_CLASSES: Record<
 export default function HostDashboard({
   initial,
   initialSessionOpen,
+  initialVenue,
 }: {
   initial: Singer[];
   initialSessionOpen: boolean;
+  initialVenue: string | null;
 }) {
   const [singers, setSingers] = useState<Singer[]>(initial);
   const [sessionOpen, setSessionOpen] = useState(initialSessionOpen);
+  const [venue, setVenue] = useState<string | null>(initialVenue);
   const [density, setDensity] = useState<Density>("medium");
   const dirtyRef = useRef(false); // local edits in flight; pause polling overwrites
 
@@ -309,11 +312,22 @@ export default function HostDashboard({
   }
 
   async function beginNight() {
+    const typed = prompt(
+      "Where's tonight's gig? (e.g., The Nerve in Haverhill)",
+      venue ?? "The Nerve",
+    );
+    if (typed === null) return; // host canceled
+    const nextVenue = typed.trim() || venue || null;
+
     dirtyRef.current = true;
-    const ok = await api("/api/host/begin-night", {});
+    const ok = await api("/api/host/begin-night", { venue: nextVenue });
     dirtyRef.current = false;
-    if (ok) setSessionOpen(true);
-    else alert("Couldn't begin the night — try again.");
+    if (ok) {
+      setSessionOpen(true);
+      if (nextVenue) setVenue(nextVenue);
+    } else {
+      alert("Couldn't begin the night — try again.");
+    }
   }
 
   async function endNight() {
@@ -374,6 +388,14 @@ export default function HostDashboard({
             >
               {sessionOpen ? "● Live" : "○ Closed"}
             </span>
+            {sessionOpen && venue && (
+              <span
+                className="shrink-0 text-[10px] text-zinc-400 truncate"
+                title="Venue for tonight's session"
+              >
+                @ {venue}
+              </span>
+            )}
           </div>
           <form action="/api/host/logout" method="post" className="shrink-0">
             <button className="text-xs text-zinc-400 hover:text-zinc-200" type="submit">

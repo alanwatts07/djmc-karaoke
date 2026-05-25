@@ -194,10 +194,14 @@ create index if not exists singers_archived_at_idx  on public.singers (archived_
 -- Defaults to TRUE so deploying this migration doesn't break in-flight nights.
 -- ===========================================================================
 create table if not exists public.app_state (
-  id           text primary key default 'singleton',
-  session_open boolean not null default true,
+  id            text primary key default 'singleton',
+  session_open  boolean not null default true,
+  current_venue text,
   constraint app_state_singleton check (id = 'singleton')
 );
+
+-- Backfill column for existing installs.
+alter table public.app_state add column if not exists current_venue text;
 
 insert into public.app_state (id, session_open)
 values ('singleton', true)

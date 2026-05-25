@@ -1,11 +1,11 @@
 import { db, type Singer } from "@/lib/supabase";
-import { isSessionOpen } from "@/lib/session";
+import { getSessionState } from "@/lib/session";
 import HostDashboard from "./dashboard";
 
 export const dynamic = "force-dynamic";
 
 export default async function HostPage() {
-  const [{ data, error }, sessionOpen] = await Promise.all([
+  const [{ data, error }, session] = await Promise.all([
     db
       .from("singers")
       .select("*")
@@ -13,7 +13,7 @@ export default async function HostPage() {
       .is("archived_at", null)
       .order("queue_position", { ascending: true })
       .returns<Singer[]>(),
-    isSessionOpen(),
+    getSessionState(),
   ]);
 
   if (error) {
@@ -25,6 +25,10 @@ export default async function HostPage() {
   }
 
   return (
-    <HostDashboard initial={data ?? []} initialSessionOpen={sessionOpen} />
+    <HostDashboard
+      initial={data ?? []}
+      initialSessionOpen={session.open}
+      initialVenue={session.venue}
+    />
   );
 }
