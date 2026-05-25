@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db, type Singer } from "@/lib/supabase";
 import { ensureSingerToken, getSingerToken } from "@/lib/singer-token";
 import { fairInterleave } from "@/lib/queue-ops";
-import { isSessionOpen } from "@/lib/session";
+import { getSessionState, isSessionOpen } from "@/lib/session";
 import {
   getUpcomingEvents,
   formatEventDate,
@@ -97,7 +97,7 @@ export default async function Home({
     if (data) knownName = data.stage_name;
   }
 
-  const sessionOpen = await isSessionOpen();
+  const { open: sessionOpen, venue } = await getSessionState();
 
   // Closed: render the promo splash. If the visitor is a returning singer,
   // give them a button into their setlist so they don't think we forgot them.
@@ -221,6 +221,16 @@ export default async function Home({
           priority
           className="mx-auto mb-4 h-40 w-40 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
         />
+
+        <div className="flex justify-center mb-4">
+          <span
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 border border-emerald-500/30"
+            title="Sign-ups are open"
+          >
+            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+            Live{venue ? ` at ${venue}` : ""}
+          </span>
+        </div>
 
         <h1 className="text-4xl font-bold tracking-tight text-center mb-2">
           {knownName ? `Hey, ${knownName}` : "Get on the mic"}
