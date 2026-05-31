@@ -63,13 +63,31 @@ export async function reconcileStatuses(): Promise<void> {
 // The actual algorithm lives in computeFairOrder() so it can be unit-tested
 // against synthetic data without touching the database.
 export async function fairInterleave(): Promise<void> {
+  // Order by the CURRENT queue order, NOT arrival time. computeFairOrder walks
+  // the rows in the order it's handed, so feeding it queue_position preserves
+  // any manual drag-reorder (or Express Lane bump) the host has done — it only
+  // layers the one-song-per-rotation spacing on top of the existing order.
+  //
+  // This used to order by submitted_at, which rebuilt the whole queue from
+  // scratch on every new signup — silently reverting the host's manual reorder
+  // a minute or two later (whenever the next singer signed up). That was the
+  // "it snaps back to how it started" bug.
+  //
+  // Freshly-inserted rows haven't been through set_queue_order yet, so they
+  // have no real position (NULL / 0). Push them to the tail by submitted_at so
+  // a new singer joins the BACK of the rotation instead of jumping the line.
   const { data, error } = await selectActiveSession()
-    .order("submitted_at", { ascending: true })
+    .order("queue_position", { ascending: true, nullsFirst: false })
     .returns<Singer[]>();
   if (error || !data) return;
   if (data.length === 0) return;
 
-  const newOrder = computeFairOrder(data);
+  const positioned = data.filter((r) => r.queue_position && r.queue_position > 0);
+  const fresh = data
+    .filter((r) => !r.queue_position || r.queue_position <= 0)
+    .sort((a, b) => (a.submitted_at ?? "").localeCompare(b.submitted_at ?? ""));
+
+  const newOrder = computeFairOrder([...positioned, ...fresh]);
   await setQueueOrder(newOrder.map((s) => s.id));
 }
 
