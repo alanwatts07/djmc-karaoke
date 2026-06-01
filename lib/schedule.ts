@@ -24,11 +24,26 @@ const RESIDENCIES: Residency[] = [
     venue: "The Nerve",
     city: "Haverhill",
     dayOfWeek: 6,       // Saturday
-    startHour: 20,      // 8 PM
-    startMinute: 0,
+    startHour: 21,      // 9:30 PM
+    startMinute: 30,
     endLabel: "12:45 AM",
   },
 ];
+
+// Residency nights we're NOT doing karaoke — cancelled, or the venue has
+// something else booked (a live show, private event, etc). Keyed by local
+// YYYY-MM-DD. These dates are skipped and the schedule rolls to the next
+// real karaoke night.
+const BLACKOUT_DATES = new Set<string>([
+  "2026-06-20", // Live show at The Nerve — no karaoke this Saturday
+]);
+
+function dateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 // Returns the next N occurrences across all residencies, sorted soonest first.
 // Includes today if today matches a residency day (handy for "tonight"
@@ -48,14 +63,23 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
       if (cursor.getTime() >= from.getTime() - 6 * 60 * 60 * 1000) break;
     }
 
-    for (let i = 0; i < count; i++) {
-      events.push({
-        venue: r.venue,
-        city: r.city,
-        start: new Date(cursor),
-        endLabel: r.endLabel,
-      });
+    // Collect `count` occurrences, skipping any blackout dates and rolling
+    // forward to the next real night. Guard caps the walk at ~1 year so a
+    // misconfiguration can never spin forever.
+    let collected = 0;
+    let guard = 0;
+    while (collected < count && guard < count + 52) {
+      if (!BLACKOUT_DATES.has(dateKey(cursor))) {
+        events.push({
+          venue: r.venue,
+          city: r.city,
+          start: new Date(cursor),
+          endLabel: r.endLabel,
+        });
+        collected++;
+      }
       cursor.setDate(cursor.getDate() + 7);
+      guard++;
     }
   }
 
