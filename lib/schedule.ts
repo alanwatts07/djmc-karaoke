@@ -45,6 +45,19 @@ function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// One-off karaoke nights outside the weekly Saturday residency (special
+// nights, fill-ins, gigs at other venues). Add ad-hoc dates here; they're
+// merged into the upcoming-shows list and sorted in by date. Month is
+// 0-indexed in the Date constructor (so 5 = June).
+const ONE_OFF_EVENTS: ScheduledEvent[] = [
+  {
+    venue: "The Nerve",
+    city: "Haverhill",
+    start: new Date(2026, 5, 19, 21, 30, 0), // Fri Jun 19 2026, 9:30 PM
+    endLabel: "12:45 AM",
+  },
+];
+
 // Returns the next N occurrences across all residencies, sorted soonest first.
 // Includes today if today matches a residency day (handy for "tonight"
 // after the gig has started but before midnight).
@@ -80,6 +93,15 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
       }
       cursor.setDate(cursor.getDate() + 7);
       guard++;
+    }
+  }
+
+  // Merge in any one-off nights that haven't already passed. Same 6h grace
+  // window as the residency walk so "tonight" stays listed during/after the
+  // gig until well past midnight.
+  for (const e of ONE_OFF_EVENTS) {
+    if (e.start.getTime() >= from.getTime() - 6 * 60 * 60 * 1000) {
+      events.push(e);
     }
   }
 
