@@ -19,6 +19,11 @@ import Footer from "./footer";
 const MAX_ACTIVE_SONGS = 3;
 const MAX_SUBMISSIONS_PER_HOUR = 6;
 
+// Optional Spotify artist link. When set, a "Listen on Spotify" button shows
+// on the splash so open-mic crowds scanning the QR can find DJ MC's music.
+// NEXT_PUBLIC_ so it's inlined for the browser; hidden entirely if unset.
+const SPOTIFY_URL = process.env.NEXT_PUBLIC_SPOTIFY_URL;
+
 async function submit(formData: FormData) {
   "use server";
 
@@ -125,6 +130,24 @@ export default async function Home({
             <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
             Sign-ups open when the night kicks off
           </div>
+
+          {SPOTIFY_URL && (
+            <a
+              href={SPOTIFY_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold py-3 mb-8 transition no-underline"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="h-5 w-5 fill-current"
+              >
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.31c-.22.36-.68.47-1.04.25-2.85-1.74-6.43-2.13-10.65-1.17-.41.09-.82-.16-.92-.57-.09-.41.16-.82.57-.92 4.62-1.06 8.58-.6 11.78 1.35.36.22.47.68.25 1.06zm1.47-3.27c-.27.45-.86.59-1.31.31-3.26-2-8.23-2.58-12.09-1.41-.5.15-1.04-.13-1.19-.63-.15-.5.13-1.04.63-1.19 4.41-1.34 9.89-.69 13.64 1.61.45.27.59.86.31 1.31zm.13-3.4C15.69 8.21 8.99 7.98 5.1 9.16c-.6.18-1.24-.16-1.42-.76-.18-.6.16-1.24.76-1.42 4.47-1.36 11.87-1.09 16.05 1.39.54.32.72 1.02.4 1.56-.32.54-1.02.72-1.56.4z" />
+              </svg>
+              Listen on Spotify
+            </a>
+          )}
 
           {knownName ? (
             <>
