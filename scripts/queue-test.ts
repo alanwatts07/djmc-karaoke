@@ -115,6 +115,16 @@ const SCENARIOS: Scenario[] = [
     steps: [sub("X", "t-x"), sub("X", "t-x"), sub("Y", "t-y")],
   },
   {
+    title:
+      "First-timer priority: Bob sang, then Bob + newcomer Carol each queue one — Carol first",
+    steps: [
+      sub("Bob", "t-bob"),
+      done("Bob"),
+      sub("Bob", "t-bob"),
+      sub("Carol", "t-carol"),
+    ],
+  },
+  {
     title: "Half the room done, returning singer drops 3 — weave with the rest",
     steps: [
       sub("Mike", "t-mike"),

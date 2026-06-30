@@ -52,10 +52,12 @@ export async function reconcileStatuses(): Promise<void> {
   );
 }
 
-// Rotation-based fairness: every singer gets at most one song per rotation.
+// Rotation-based fairness: every singer gets at most one song per rotation,
+// and singers who haven't sung yet this night are favored over repeat trips.
 // Walk the queue in arrival order; drop each row into the earliest rotation
-// that doesn't already contain that singer. A new singer joins the current
-// rotation; a singer's nth song lands in rotation n.
+// that doesn't already contain that singer, skipping past one rotation for
+// each song they've already finished. A first-timer joins the current
+// rotation; a singer's nth lifetime song of the night lands in rotation n.
 //
 // Sticky states (singing / hold / done) are not touched; we renumber the
 // rotation slots around them.
@@ -95,20 +97,40 @@ export async function fairInterleave(): Promise<void> {
 // returns them in the order they should sit in the queue. No DB calls.
 // Safe to call from tests with synthetic data — no side effects.
 //
-// Order: singing → rotations 1..N flattened → hold → done.
+// Order: singing → rotations 1..N flattened → hold → done. A singer's already-
+// sung (done) songs push their queued songs into later rotations, so singers
+// who haven't sung yet sort ahead of repeat singers.
 export function computeFairOrder(rows: Singer[]): Singer[] {
   const singing = rows.filter((s) => s.status === "singing");
   const rotationRows = rows.filter(isRotation);
   const hold = rows.filter((s) => s.status === "hold");
   const done = rows.filter((s) => s.status === "done");
 
+  // Haven't-sung-yet goes first: a singer who has already completed k songs
+  // this session starts placing at rotation k, so first-timers (k=0) fill
+  // rotation 1 ahead of anyone getting back in line. Combined with the
+  // one-per-rotation rule below, this means each singer's nth *lifetime* song
+  // of the night lands in rotation n — a completed (done) song reserves a slot
+  // exactly like a queued one would. Done rows from earlier nights carry a
+  // night_id and are filtered out upstream (selectActiveSession), so the count
+  // resets each night.
+  const sungCount = new Map<string, number>();
+  for (const row of done) {
+    const key = singerKey(row);
+    sungCount.set(key, (sungCount.get(key) ?? 0) + 1);
+  }
+
   const rotations: Singer[][] = [];
   for (const row of rotationRows) {
     const key = singerKey(row);
+    const start = sungCount.get(key) ?? 0;
+    // Reserve a rotation slot for each song this singer already finished, then
+    // drop into the earliest later rotation that doesn't already hold them.
+    while (rotations.length <= start) rotations.push([]);
     let placed = false;
-    for (const rot of rotations) {
-      if (!rot.some((r) => singerKey(r) === key)) {
-        rot.push(row);
+    for (let i = start; i < rotations.length; i++) {
+      if (!rotations[i].some((r) => singerKey(r) === key)) {
+        rotations[i].push(row);
         placed = true;
         break;
       }
