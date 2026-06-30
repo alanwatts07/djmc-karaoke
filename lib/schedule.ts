@@ -36,6 +36,7 @@ const RESIDENCIES: Residency[] = [
 // real karaoke night.
 const BLACKOUT_DATES = new Set<string>([
   "2026-06-20", // Live show at The Nerve — no karaoke this Saturday
+  "2026-07-04", // July 4th — no karaoke (holiday)
 ]);
 
 function dateKey(d: Date): string {
