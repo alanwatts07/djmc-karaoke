@@ -37,6 +37,7 @@ const RESIDENCIES: Residency[] = [
 const BLACKOUT_DATES = new Set<string>([
   "2026-06-20", // Live show at The Nerve — no karaoke this Saturday
   "2026-07-04", // July 4th — no karaoke (holiday)
+  "2026-07-11", // Moved to Fri Jul 10 this week — no Saturday karaoke
 ]);
 
 function dateKey(d: Date): string {
@@ -55,6 +56,12 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
     venue: "The Nerve",
     city: "Haverhill",
     start: new Date(2026, 5, 19, 21, 30, 0), // Fri Jun 19 2026, 9:30 PM
+    endLabel: "12:45 AM",
+  },
+  {
+    venue: "The Nerve",
+    city: "Haverhill",
+    start: new Date(2026, 6, 10, 21, 30, 0), // Fri Jul 10 2026, 9:30 PM (moved from Sat Jul 11)
     endLabel: "12:45 AM",
   },
 ];
@@ -111,7 +118,17 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
     .slice(0, count);
 }
 
-export function formatEventDate(d: Date): string {
+export function formatEventDate(d: Date, now: Date = new Date()): string {
+  // Same calendar day as now → "Tonight" (all shows are evening gigs). Uses
+  // the same naive-local frame as the rest of this file, so it lines up with
+  // how the wall-clock start times are constructed and displayed.
+  if (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  ) {
+    return "Tonight";
+  }
   return d.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
