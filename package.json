@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:queue": "bun run scripts/queue-test.ts"
+    "test:queue": "bun run scripts/queue-test.ts",
+    "seed": "bun run scripts/seed-singers.ts",
+    "seed:reset": "bun run scripts/reset-singers.ts",
+    "stats:review": "bun run scripts/normalize-review.ts",
+    "backup": "bun run scripts/backup-data.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

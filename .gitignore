@@ -47,3 +47,6 @@ next-env.d.ts
 *:Zone.Identifier
 /scripts/qr/
 /crush-mobile.jpg
+
+# Local data snapshots — real attendee names, keep out of the public repo
+backups/

@@ -1,15 +1,20 @@
 import Link from "next/link";
 import { db, type Night } from "@/lib/supabase";
+import { computeStats } from "@/lib/stats/aggregate";
 import NightsTable from "./nights-table";
+import Leaderboards from "./leaderboards";
 
 export const dynamic = "force-dynamic";
 
 export default async function StatsPage() {
-  const { data, error } = await db
-    .from("nights")
-    .select("*")
-    .order("ended_at", { ascending: false })
-    .returns<Night[]>();
+  const [{ data, error }, stats] = await Promise.all([
+    db
+      .from("nights")
+      .select("*")
+      .order("ended_at", { ascending: false })
+      .returns<Night[]>(),
+    computeStats(),
+  ]);
 
   if (error) {
     return (
@@ -53,6 +58,14 @@ export default async function StatsPage() {
           </p>
         ) : (
           <NightsTable initial={nights} />
+        )}
+
+        {stats.singers.length > 0 && (
+          <Leaderboards
+            singers={stats.singers}
+            songs={stats.songs}
+            totalPerformances={stats.totalPerformances}
+          />
         )}
       </div>
     </main>
