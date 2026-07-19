@@ -51,7 +51,7 @@ export function aggregate(rows: Singer[]): StatsBundle {
   let totalPerformances = 0;
 
   for (const r of rows) {
-    const people = canonicalSingers(r.stage_name);
+    const people = canonicalSingers(r.stage_name, r.singer_token);
     const song = canonicalSong(r.song);
     const didSing = r.started_singing_at !== null;
     if (didSing) totalPerformances++;

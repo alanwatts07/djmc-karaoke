@@ -405,10 +405,27 @@ export const SONG_ALIASES: Record<string, string> = {
   "Oliver tree anything by him": "Oliver Tree — (unsung)",
 };
 
+// ── Token overrides ──────────────────────────────────────────────────────────
+// Some raw stage_names collide across different real people — two different
+// people both just type "Seth". When they can't be told apart by name, split
+// them by their device token (stable per person). Checked BEFORE the name map,
+// so it wins only for the specific person who owns that token; everyone else
+// with the same name falls through to SINGER_ALIASES as normal.
+export const TOKEN_ALIASES: Record<string, string[]> = {
+  // Seth Eberhart-Ladd — shares the stage_name "Seth" with Seth Lenig, told
+  // apart by this device token (confirmed by host, Jul 19 2026 night).
+  "8712b1bf-fbc7-406d-9b82-e0009ddf2883": ["Seth E."],
+};
+
 // ── Resolvers ────────────────────────────────────────────────────────────────
 
-/** Canonical singer name(s) for a raw stage_name. Unknown -> [trimmed raw]. */
-export function canonicalSingers(rawStageName: string): string[] {
+/** Canonical singer name(s) for a raw stage_name, optionally disambiguated by
+ *  the device token. Unknown -> [trimmed raw]. */
+export function canonicalSingers(
+  rawStageName: string,
+  token?: string | null,
+): string[] {
+  if (token && TOKEN_ALIASES[token]) return TOKEN_ALIASES[token];
   const hit = SINGER_ALIASES[rawStageName];
   if (hit) return hit;
   const trimmed = rawStageName.trim();

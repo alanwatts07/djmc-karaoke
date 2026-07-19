@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local DB snapshots from `bun run backup` — contain singer names + tokens,
+# never commit them
+backups/
+
 # vercel
 .vercel
 
