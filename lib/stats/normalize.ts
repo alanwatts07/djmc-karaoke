@@ -154,6 +154,11 @@ export const SINGER_ALIASES: Record<string, string[]> = {
   Kristle: ["Kristle"],
   Elizabeth: ["Elizabeth"],
   Connor: ["Connor"],
+
+  // ── Added from the Jul 19, 2026 night ──
+  Liz: ["Liz"],
+  // Song title got typed into the name field; this row is Matt singing "Without Me".
+  "Without me": ["Matt"],
 };
 
 // ── Songs ──────────────────────────────────────────────────────────────────
@@ -366,6 +371,38 @@ export const SONG_ALIASES: Record<string, string> = {
   "What's going on": "What's Going On — Marvin Gaye", // UNSURE
   Radiohead: "Creep — Radiohead", // UNSURE: artist only, guessed song
   "Sweet but psycho": "Sweet but Psycho — Ava Max",
+
+  // ── Added from the Jul 19, 2026 night ──
+  "Finger eleven - paralyzer": "Paralyzer — Finger Eleven",
+  "Dandelion- Ella Langley": "Dandelion — Ella Langley",
+  "Nothing Compares To You - Chris Cornell Version":
+    "Nothing Compares 2 U — Chris Cornell",
+  "Strawberry wine": "Strawberry Wine — Deana Carter",
+  "Dream a little dream mamas and papas":
+    "Dream a Little Dream of Me — The Mamas & the Papas",
+  "What I want- Morgan wallen": "What I Want — Morgan Wallen",
+  "Stand by me - Ben E. King": "Stand by Me — Ben E. King",
+  Valerie: "Valerie — Amy Winehouse",
+  // Song title accidentally entered in the name field; Matt sang Eminem's "Without Me".
+  Eminem: "Without Me — Eminem",
+  "Rob zombie-dragula with lily": "Dragula — Rob Zombie",
+  Nutshell: "Nutshell — Alice in Chains",
+  "Before he cheats": "Before He Cheats — Carrie Underwood",
+  "I can't get no satisfaction": "(I Can't Get No) Satisfaction — The Rolling Stones",
+  "Suds in the bucket": "Suds in the Bucket — Sara Evans",
+  "A day to remember - I'm made of wax larry":
+    "I'm Made of Wax, Larry, What Are You Made Of? — A Day to Remember",
+  "Without me - Halsey": "Without Me — Halsey",
+  "John #1 (NOT KATIE) - Freeebird": "Free Bird — Lynyrd Skynyrd",
+  "Fuck you cee lo": "Fuck You (Forget You) — CeeLo Green",
+  "Neil young old man": "Old Man — Neil Young",
+  "Don't stop the music": "Don't Stop the Music — Rihanna",
+  "No Hands": "No Hands — Waka Flocka Flame",
+  "Tennessee Whiskey": "Tennessee Whiskey — Chris Stapleton",
+  Smooth: "Smooth — Santana",
+  "Never say never": "Never Say Never — Justin Bieber",
+  // Liz picked this but it was never marked done — kept out of the leaderboard.
+  "Oliver tree anything by him": "Oliver Tree — (unsung)",
 };
 
 // ── Resolvers ────────────────────────────────────────────────────────────────
