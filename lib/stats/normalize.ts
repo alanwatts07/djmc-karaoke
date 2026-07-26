@@ -169,6 +169,12 @@ export const SINGER_ALIASES: Record<string, string[]> = {
   Angel: ["Angel"],
   Bill: ["Bill"],
   Sweetpea: ["Sweetpea"],
+  // "Lisa and Big T" duo, entered two garbled ways (one with the song title in
+  // the name field). Credit both members, per the duet convention.
+  "List and big t": ["Lisa", "Big T"],
+  "Drunk in love": ["Lisa", "Big T"],
+  // Distinct from the earlier "Liz" — host confirms this one has only sung Macarena.
+  Lizzy: ["Lizzy"],
 };
 
 // ── Songs ──────────────────────────────────────────────────────────────────
@@ -457,6 +463,7 @@ export const SONG_ALIASES: Record<string, string> = {
   Macarena: "Macarena — Los del Río",
   September: "September — Earth, Wind & Fire",
   "Back to black": "Back to Black — Amy Winehouse",
+  "Went for the wind": "Weren't for the Wind — Ella Langley", // misheard title
 };
 
 // ── Token overrides ──────────────────────────────────────────────────────────
