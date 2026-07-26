@@ -167,6 +167,8 @@ export const SINGER_ALIASES: Record<string, string[]> = {
   Luke: ["Luke"],
   Devin: ["Devin"],
   Angel: ["Angel"],
+  Bill: ["Bill"],
+  Sweetpea: ["Sweetpea"],
 };
 
 // ── Songs ──────────────────────────────────────────────────────────────────
