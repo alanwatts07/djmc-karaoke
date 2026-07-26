@@ -159,6 +159,14 @@ export const SINGER_ALIASES: Record<string, string[]> = {
   Liz: ["Liz"],
   // Song title got typed into the name field; this row is Matt singing "Without Me".
   "Without me": ["Matt"],
+
+  // ── Added from the Jul 24–25, 2026 nights ──
+  Sloth: ["SLOTH"], // same person as SLOTH, just lowercased
+  brassie: ["Brassie"],
+  Julia: ["Julia"],
+  Luke: ["Luke"],
+  Devin: ["Devin"],
+  Angel: ["Angel"],
 };
 
 // ── Songs ──────────────────────────────────────────────────────────────────
@@ -403,6 +411,50 @@ export const SONG_ALIASES: Record<string, string> = {
   "Never say never": "Never Say Never — Justin Bieber",
   // Liz picked this but it was never marked done — kept out of the leaderboard.
   "Oliver tree anything by him": "Oliver Tree — (unsung)",
+
+  // ── Added from the Jul 24–25, 2026 nights ──
+  "Crazy - gnarls barkley": "Crazy — Gnarls Barkley",
+  "Pan!c at the disco- 9 in the afternoon":
+    "Nine in the Afternoon — Panic! at the Disco",
+  Rehab: "Rehab — Amy Winehouse",
+  "Teenage dritbag": "Teenage Dirtbag — Wheatus",
+  "Choosing Texas": "Choosin' Texas — Ella Langley",
+  "Vianna Billy joel": "Vienna — Billy Joel",
+  "Drunken love": "Drunk in Love — Beyoncé",
+  Yay: "Drunk in Love — Beyoncé", // filler entry; the singer actually did Drunk in Love
+  "Lisa Lisa all cried out": "All Cried Out — Lisa Lisa and Cult Jam",
+  "Loser beck": "Loser — Beck",
+  "Beck loser": "Loser — Beck",
+  "Dirty work- steely dan": "Dirty Work — Steely Dan",
+  "Me and your mama - childish gambino": "Me and Your Mama — Childish Gambino",
+  Twisted: "Twisted — Keith Sweat", // "girl you got me twisted over you"
+  "orbiter by noah kahan": "Orbiter — Noah Kahan",
+  "Green river credence clear water revival":
+    "Green River — Creedence Clearwater Revival",
+  "Money for nothing": "Money for Nothing — Dire Straits",
+  "Whenever Wherever by Shakira": "Whenever, Wherever — Shakira",
+  "Heaven can wait": "Heaven Can Wait — Meat Loaf",
+  "Hey jealousy": "Hey Jealousy — Gin Blossoms",
+  "Skid row 18 to lige": "18 and Life — Skid Row",
+  "Skid row": "18 and Life — Skid Row", // best guess from the companion entry
+  "Proud Mary by Tina Turner": "Proud Mary — Tina Turner",
+  "Lump presidents of the USA":
+    "Lump — The Presidents of the United States of America",
+  "Earth wind and fire- cant hide love": "Can't Hide Love — Earth, Wind & Fire",
+  "Doing time- sublime": "Doin' Time — Sublime",
+  "Son of a preacher man": "Son of a Preacher Man — Dusty Springfield",
+  "Amy winehouse - valerie": "Valerie — Amy Winehouse",
+  "Inside out": "Inside Out — Spoon",
+  "Gimme the loot": "Gimme the Loot — The Notorious B.I.G.",
+  "Bust a move": "Bust a Move — Young MC",
+  Brandy: "Brandy (You're a Fine Girl) — Looking Glass",
+  "Valerie Amy whine house": "Valerie — Amy Winehouse",
+  "Man I need Olivia dean": "Man I Need — Olivia Dean",
+  "Bad romance": "Bad Romance — Lady Gaga",
+  "Freestyle lil baby": "Freestyle — Lil Baby",
+  Macarena: "Macarena — Los del Río",
+  September: "September — Earth, Wind & Fire",
+  "Back to black": "Back to Black — Amy Winehouse",
 };
 
 // ── Token overrides ──────────────────────────────────────────────────────────
