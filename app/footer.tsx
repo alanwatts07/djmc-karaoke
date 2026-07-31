@@ -9,8 +9,11 @@ const VENMO = process.env.NEXT_PUBLIC_VENMO_HANDLE ?? "your-venmo-handle";
 const INSTAGRAM =
   process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE ?? "your-instagram";
 const WEBSITE = process.env.NEXT_PUBLIC_WEBSITE ?? "your-site.com";
-const BOOKING_EMAIL =
-  process.env.NEXT_PUBLIC_BOOKING_EMAIL ?? "you@example.com";
+// Where the "Book DJ MC" button points. Defaults to the main site; set
+// NEXT_PUBLIC_BOOKING_URL to a dedicated booking page (e.g. .../book) if there
+// is one. (Was a mailto: link, which misfires on phones with no mail app.)
+const BOOKING_URL =
+  process.env.NEXT_PUBLIC_BOOKING_URL ?? `https://${WEBSITE}`;
 const RADIO_URL =
   process.env.NEXT_PUBLIC_RADIO_URL ?? `https://${WEBSITE}`;
 const DJ_NAME = process.env.NEXT_PUBLIC_DJ_NAME ?? "DJ MC";
@@ -71,7 +74,9 @@ export default function Footer({
 
       <div className="pt-1">
         <a
-          href={`mailto:${BOOKING_EMAIL}?subject=${encodeURIComponent(`Book ${DJ_NAME} for an event`)}`}
+          href={BOOKING_URL}
+          target="_blank"
+          rel="noreferrer"
           className="inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold text-sm px-5 py-2 transition no-underline"
         >
           📅 Book {DJ_NAME} for your event
