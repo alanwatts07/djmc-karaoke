@@ -38,6 +38,7 @@ const BLACKOUT_DATES = new Set<string>([
   "2026-06-20", // Live show at The Nerve — no karaoke this Saturday
   "2026-07-04", // July 4th — no karaoke (holiday)
   "2026-07-11", // Moved to Fri Jul 10 this week — no Saturday karaoke
+  "2026-08-22", // Away in Iceland (Aug 17–25) — no karaoke that Saturday
 ]);
 
 function dateKey(d: Date): string {
@@ -69,6 +70,12 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
     city: "Haverhill",
     start: new Date(2026, 6, 24, 21, 30, 0), // Fri Jul 24 2026, 9:30 PM (added second night)
     endLabel: "12:45 AM",
+  },
+  {
+    venue: "The Nerve",
+    city: "Haverhill",
+    start: new Date(2026, 6, 31, 20, 30, 0), // Fri Jul 31 2026, 8:30 PM
+    endLabel: "12:00 AM",
   },
 ];
 
