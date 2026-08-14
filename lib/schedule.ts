@@ -80,8 +80,8 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
   {
     venue: "The Nerve",
     city: "Haverhill",
-    start: new Date(2026, 7, 14, 20, 30, 0), // Fri Aug 14 2026, 8:30 PM
-    endLabel: "12:00 AM",
+    start: new Date(2026, 7, 14, 21, 0, 0), // Fri Aug 14 2026, 9:00 PM
+    endLabel: "12:30 AM",
   },
 ];
 
