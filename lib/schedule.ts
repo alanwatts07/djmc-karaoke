@@ -24,9 +24,9 @@ const RESIDENCIES: Residency[] = [
     venue: "The Nerve",
     city: "Haverhill",
     dayOfWeek: 6,       // Saturday
-    startHour: 21,      // 9:30 PM
-    startMinute: 30,
-    endLabel: "12:45 AM",
+    startHour: 21,      // 9:00 PM
+    startMinute: 0,
+    endLabel: "12:00 AM",
   },
 ];
 
