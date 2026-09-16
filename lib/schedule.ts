@@ -83,6 +83,12 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
     start: new Date(2026, 7, 14, 21, 0, 0), // Fri Aug 14 2026, 9:00 PM
     endLabel: "12:30 AM",
   },
+  {
+    venue: "The Vault",
+    city: "Haverhill", // TODO: confirm city for The Vault
+    start: new Date(2026, 8, 16, 22, 0, 0), // Wed Sep 16 2026, 10:00 PM (tester night)
+    endLabel: "11:00 PM",
+  },
 ];
 
 // Returns the next N occurrences across all residencies, sorted soonest first.
