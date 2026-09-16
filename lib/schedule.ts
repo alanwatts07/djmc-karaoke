@@ -85,7 +85,7 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
   },
   {
     venue: "The Vault",
-    city: "Haverhill", // TODO: confirm city for The Vault
+    city: "Haverhill",
     start: new Date(2026, 8, 16, 22, 0, 0), // Wed Sep 16 2026, 10:00 PM (tester night)
     endLabel: "11:00 PM",
   },
