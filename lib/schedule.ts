@@ -89,6 +89,12 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
     start: new Date(2026, 8, 16, 22, 0, 0), // Wed Sep 16 2026, 10:00 PM (tester night)
     endLabel: "11:00 PM",
   },
+  {
+    venue: "Vault 77 Lounge",
+    city: "Haverhill",
+    start: new Date(2026, 8, 23, 20, 0, 0), // Wed Sep 23 2026, 8:00 PM
+    endLabel: "10:00 PM",
+  },
 ];
 
 // Returns the next N occurrences across all residencies, sorted soonest first.
