@@ -95,6 +95,12 @@ const ONE_OFF_EVENTS: ScheduledEvent[] = [
     start: new Date(2026, 8, 23, 20, 0, 0), // Wed Sep 23 2026, 8:00 PM
     endLabel: "10:00 PM",
   },
+  {
+    venue: "The Nerve",
+    city: "Haverhill",
+    start: new Date(2026, 8, 25, 21, 0, 0), // Fri Sep 25 2026, 9:00 PM
+    endLabel: "12:00 AM",
+  },
 ];
 
 // Returns the next N occurrences across all residencies, sorted soonest first.
