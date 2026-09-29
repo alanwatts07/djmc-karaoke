@@ -28,6 +28,14 @@ const RESIDENCIES: Residency[] = [
     startMinute: 0,
     endLabel: "12:00 AM",
   },
+  {
+    venue: "Vault 77 Lounge",
+    city: "Haverhill",
+    dayOfWeek: 3,       // Wednesday
+    startHour: 21,      // 9:00 PM
+    startMinute: 0,
+    endLabel: "11:00 PM",
+  },
 ];
 
 // Residency nights we're NOT doing karaoke — cancelled, or the venue has
