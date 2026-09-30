@@ -1,20 +1,22 @@
-// Hardcoded recurring residencies. For v1, just the weekly Saturday at
-// The Nerve. If/when DJ MC picks up more residencies or one-off gigs,
-// turn this into a real events table — but for one venue + one recurring
-// night, dynamic generation is plenty.
+// Hardcoded recurring residencies + one-off gigs, generated dynamically.
+//
+// TIMEZONE: all show times are Eastern (America/New_York) wall-clock. Vercel's
+// servers run in UTC, so we must NOT rely on the server's local time — otherwise
+// a Wednesday show shows as "Tonight" on Tuesday evening (Eastern), and times
+// render hours off. Every date decision here goes through Eastern-time helpers.
 
 export type ScheduledEvent = {
   venue: string;
   city: string;
-  start: Date;          // Local time the doors open / show starts
-  endLabel: string;     // Human-readable end ("12:45 AM"); used as-is, no tz math
+  start: Date; // absolute instant of the (Eastern) start time
+  endLabel: string; // human-readable end ("12:00 AM"); shown as-is
 };
 
 type Residency = {
   venue: string;
   city: string;
-  dayOfWeek: number;    // 0 = Sun, 6 = Sat
-  startHour: number;    // 24h, local
+  dayOfWeek: number; // 0 = Sun, 6 = Sat
+  startHour: number; // 24h, Eastern
   startMinute: number;
   endLabel: string;
 };
@@ -23,25 +25,23 @@ const RESIDENCIES: Residency[] = [
   {
     venue: "The Nerve",
     city: "Haverhill",
-    dayOfWeek: 6,       // Saturday
-    startHour: 21,      // 9:00 PM
+    dayOfWeek: 6, // Saturday
+    startHour: 21, // 9:00 PM
     startMinute: 0,
     endLabel: "12:00 AM",
   },
   {
     venue: "Vault 77 Lounge",
     city: "Haverhill",
-    dayOfWeek: 3,       // Wednesday
-    startHour: 21,      // 9:00 PM
+    dayOfWeek: 3, // Wednesday
+    startHour: 21, // 9:00 PM
     startMinute: 0,
     endLabel: "11:00 PM",
   },
 ];
 
-// Residency nights we're NOT doing karaoke — cancelled, or the venue has
-// something else booked (a live show, private event, etc). Keyed by local
-// YYYY-MM-DD. These dates are skipped and the schedule rolls to the next
-// real karaoke night.
+// Residency nights we're NOT doing karaoke — cancelled or the venue's booked.
+// Keyed by Eastern YYYY-MM-DD; skipped, and the schedule rolls to the next night.
 const BLACKOUT_DATES = new Set<string>([
   "2026-06-20", // Live show at The Nerve — no karaoke this Saturday
   "2026-07-04", // July 4th — no karaoke (holiday)
@@ -49,132 +49,121 @@ const BLACKOUT_DATES = new Set<string>([
   "2026-08-22", // Away in Iceland (Aug 17–25) — no karaoke that Saturday
 ]);
 
-function dateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+// One-off nights outside the weekly residencies. Times are Eastern wall-clock;
+// `mon` is 1-based (June = 6). These merge into the upcoming list, sorted by date.
+type OneOff = {
+  venue: string;
+  city: string;
+  y: number;
+  mon: number; // 1-based
+  day: number;
+  hh: number; // 24h Eastern
+  mm: number;
+  endLabel: string;
+};
 
-// One-off karaoke nights outside the weekly Saturday residency (special
-// nights, fill-ins, gigs at other venues). Add ad-hoc dates here; they're
-// merged into the upcoming-shows list and sorted in by date. Month is
-// 0-indexed in the Date constructor (so 5 = June).
-const ONE_OFF_EVENTS: ScheduledEvent[] = [
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 5, 19, 21, 30, 0), // Fri Jun 19 2026, 9:30 PM
-    endLabel: "12:45 AM",
-  },
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 6, 10, 21, 30, 0), // Fri Jul 10 2026, 9:30 PM (moved from Sat Jul 11)
-    endLabel: "12:45 AM",
-  },
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 6, 24, 21, 30, 0), // Fri Jul 24 2026, 9:30 PM (added second night)
-    endLabel: "12:45 AM",
-  },
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 6, 31, 20, 30, 0), // Fri Jul 31 2026, 8:30 PM
-    endLabel: "12:00 AM",
-  },
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 7, 14, 21, 0, 0), // Fri Aug 14 2026, 9:00 PM
-    endLabel: "12:30 AM",
-  },
-  {
-    venue: "The Vault",
-    city: "Haverhill",
-    start: new Date(2026, 8, 16, 22, 0, 0), // Wed Sep 16 2026, 10:00 PM (tester night)
-    endLabel: "11:00 PM",
-  },
-  {
-    venue: "Vault 77 Lounge",
-    city: "Haverhill",
-    start: new Date(2026, 8, 23, 20, 0, 0), // Wed Sep 23 2026, 8:00 PM
-    endLabel: "10:00 PM",
-  },
-  {
-    venue: "The Nerve",
-    city: "Haverhill",
-    start: new Date(2026, 8, 25, 21, 0, 0), // Fri Sep 25 2026, 9:00 PM
-    endLabel: "12:00 AM",
-  },
+const ONE_OFF_EVENTS: OneOff[] = [
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 6, day: 19, hh: 21, mm: 30, endLabel: "12:45 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 7, day: 10, hh: 21, mm: 30, endLabel: "12:45 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 7, day: 24, hh: 21, mm: 30, endLabel: "12:45 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 7, day: 31, hh: 20, mm: 30, endLabel: "12:00 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 8, day: 14, hh: 21, mm: 0, endLabel: "12:30 AM" },
+  { venue: "The Vault", city: "Haverhill", y: 2026, mon: 9, day: 16, hh: 22, mm: 0, endLabel: "11:00 PM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 9, day: 25, hh: 21, mm: 0, endLabel: "12:00 AM" },
 ];
 
-// Returns the next N occurrences across all residencies, sorted soonest first.
-// Includes today if today matches a residency day (handy for "tonight"
-// after the gig has started but before midnight).
+// ── Eastern-time helpers (server-timezone-independent) ───────────────────────
+const TZ = "America/New_York";
+const pad = (n: number) => String(n).padStart(2, "0");
+
+type EtParts = { y: number; m: number; d: number; hour: number; min: number };
+
+// The Eastern wall-clock parts of an absolute instant.
+function etParts(d: Date): EtParts {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const o: Record<string, string> = {};
+  for (const p of f.formatToParts(d)) if (p.type !== "literal") o[p.type] = p.value;
+  let hour = parseInt(o.hour, 10);
+  if (hour === 24) hour = 0; // some runtimes emit "24" for midnight
+  return { y: +o.year, m: +o.month, d: +o.day, hour, min: +o.minute };
+}
+
+// Absolute instant for an Eastern wall-clock time (mon = 1-based). DST-safe.
+function fromEastern(y: number, mon: number, day: number, hh: number, mm: number): Date {
+  const target = Date.UTC(y, mon - 1, day, hh, mm);
+  const offset = (ts: number) => {
+    const p = etParts(new Date(ts));
+    return Date.UTC(p.y, p.m - 1, p.d, p.hour, p.min) - ts;
+  };
+  // Correct twice so DST boundaries resolve.
+  const ts1 = target - offset(target);
+  const ts2 = target - offset(ts1);
+  return new Date(ts2);
+}
+
+// Weekday (0=Sun) of an Eastern calendar date — noon UTC is the same calendar
+// day everywhere, so this is a safe way to get the weekday of a Y-M-D.
+function weekdayOf(y: number, mon: number, day: number): number {
+  return new Date(Date.UTC(y, mon - 1, day, 12)).getUTCDay();
+}
+
+function nextDay(y: number, mon: number, day: number): [number, number, number] {
+  const dt = new Date(Date.UTC(y, mon - 1, day, 12));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return [dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate()];
+}
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
+// Next N shows across residencies + one-offs, soonest first. A show stays listed
+// through a 6h grace window after it starts (so "Tonight" holds past midnight).
 export function getUpcomingEvents(count = 3, from: Date = new Date()): ScheduledEvent[] {
+  const GRACE = 6 * 60 * 60 * 1000;
   const events: ScheduledEvent[] = [];
+  const today = etParts(from); // Eastern "today"
 
   for (const r of RESIDENCIES) {
-    const cursor = new Date(from);
-    cursor.setHours(r.startHour, r.startMinute, 0, 0);
-
-    // Walk to next matching weekday (today counts if it matches).
-    while (cursor.getDay() !== r.dayOfWeek || cursor.getTime() < from.getTime() - 6 * 60 * 60 * 1000) {
-      cursor.setDate(cursor.getDate() + 1);
-      cursor.setHours(r.startHour, r.startMinute, 0, 0);
-      if (cursor.getDay() !== r.dayOfWeek) continue;
-      if (cursor.getTime() >= from.getTime() - 6 * 60 * 60 * 1000) break;
-    }
-
-    // Collect `count` occurrences, skipping any blackout dates and rolling
-    // forward to the next real night. Guard caps the walk at ~1 year so a
-    // misconfiguration can never spin forever.
+    let [y, m, d] = [today.y, today.m, today.d];
     let collected = 0;
     let guard = 0;
-    while (collected < count && guard < count + 52) {
-      if (!BLACKOUT_DATES.has(dateKey(cursor))) {
-        events.push({
-          venue: r.venue,
-          city: r.city,
-          start: new Date(cursor),
-          endLabel: r.endLabel,
-        });
-        collected++;
-      }
-      cursor.setDate(cursor.getDate() + 7);
+    while (collected < count && guard < 400) {
       guard++;
+      if (weekdayOf(y, m, d) === r.dayOfWeek) {
+        const key = `${y}-${pad(m)}-${pad(d)}`;
+        const start = fromEastern(y, m, d, r.startHour, r.startMinute);
+        if (start.getTime() >= from.getTime() - GRACE && !BLACKOUT_DATES.has(key)) {
+          events.push({ venue: r.venue, city: r.city, start, endLabel: r.endLabel });
+          collected++;
+        }
+      }
+      [y, m, d] = nextDay(y, m, d);
     }
   }
 
-  // Merge in any one-off nights that haven't already passed. Same 6h grace
-  // window as the residency walk so "tonight" stays listed during/after the
-  // gig until well past midnight.
   for (const e of ONE_OFF_EVENTS) {
-    if (e.start.getTime() >= from.getTime() - 6 * 60 * 60 * 1000) {
-      events.push(e);
+    const start = fromEastern(e.y, e.mon, e.day, e.hh, e.mm);
+    if (start.getTime() >= from.getTime() - GRACE) {
+      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel });
     }
   }
 
-  return events
-    .sort((a, b) => a.start.getTime() - b.start.getTime())
-    .slice(0, count);
+  return events.sort((a, b) => a.start.getTime() - b.start.getTime()).slice(0, count);
 }
 
 export function formatEventDate(d: Date, now: Date = new Date()): string {
-  // Same calendar day as now → "Tonight" (all shows are evening gigs). Uses
-  // the same naive-local frame as the rest of this file, so it lines up with
-  // how the wall-clock start times are constructed and displayed.
-  if (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  ) {
-    return "Tonight";
-  }
-  return d.toLocaleDateString(undefined, {
+  const e = etParts(d);
+  const n = etParts(now);
+  if (e.y === n.y && e.m === n.m && e.d === n.d) return "Tonight";
+  return d.toLocaleDateString("en-US", {
+    timeZone: TZ,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -182,8 +171,8 @@ export function formatEventDate(d: Date, now: Date = new Date()): string {
 }
 
 export function formatEventStart(d: Date): string {
-  return d.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: d.getMinutes() === 0 ? undefined : "2-digit",
-  });
+  const p = etParts(d);
+  const h12 = ((p.hour + 11) % 12) + 1;
+  const ampm = p.hour < 12 ? "AM" : "PM";
+  return p.min === 0 ? `${h12} ${ampm}` : `${h12}:${pad(p.min)} ${ampm}`;
 }
