@@ -9,6 +9,7 @@ import {
   getUpcomingEvents,
   formatEventDate,
   formatEventStart,
+  KIND_META,
 } from "@/lib/schedule";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
@@ -158,9 +159,26 @@ export default async function Home({
                     className="flex items-baseline justify-between gap-3 rounded-lg bg-white/5 border border-white/10 px-4 py-2.5"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white">
-                        {formatEventDate(e.start)}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-white">
+                          {formatEventDate(e.start)}
+                        </p>
+                        <span
+                          className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          style={{
+                            color: KIND_META[e.kind].accent,
+                            borderColor: `${KIND_META[e.kind].accent}66`,
+                            backgroundColor: `${KIND_META[e.kind].accent}1a`,
+                          }}
+                        >
+                          {KIND_META[e.kind].label}
+                        </span>
+                      </div>
+                      {e.title && (
+                        <p className="text-xs font-semibold text-fuchsia-300 truncate">
+                          {e.title}
+                        </p>
+                      )}
                       <p className="text-xs text-purple-300 truncate">
                         {e.venue} · {e.city}
                       </p>

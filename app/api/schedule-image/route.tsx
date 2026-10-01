@@ -5,6 +5,7 @@ import {
   getUpcomingEvents,
   formatEventDate,
   formatEventStart,
+  KIND_META,
 } from "@/lib/schedule";
 
 // A live, always-current 1080×1080 (Instagram square) graphic of the upcoming
@@ -91,13 +92,36 @@ export async function GET() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: 46, fontWeight: 800, letterSpacing: -1 }}>
-                  {formatEventDate(e.start)}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                  <span style={{ fontSize: 46, fontWeight: 800, letterSpacing: -1 }}>
+                    {formatEventDate(e.start)}
+                  </span>
+                  <span
+                    style={{
+                      display: "flex",
+                      fontSize: 22,
+                      fontWeight: 700,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      color: KIND_META[e.kind].accent,
+                      border: `2px solid ${KIND_META[e.kind].accent}66`,
+                      background: `${KIND_META[e.kind].accent}1a`,
+                      borderRadius: 999,
+                      padding: "4px 16px",
+                    }}
+                  >
+                    {KIND_META[e.kind].label}
+                  </span>
+                </div>
                 <span style={{ fontSize: 34, color: "#f5b642", fontWeight: 700 }}>
                   {formatEventStart(e.start)}–{e.endLabel}
                 </span>
               </div>
+              {e.title && (
+                <span style={{ fontSize: 30, color: "#f0abfc", fontWeight: 700, marginTop: 6, display: "flex" }}>
+                  {e.title}
+                </span>
+              )}
               <span style={{ fontSize: 30, color: "#d8b4fe", marginTop: 6, display: "flex" }}>
                 {e.venue} · {e.city}
               </span>

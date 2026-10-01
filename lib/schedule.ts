@@ -5,11 +5,23 @@
 // a Wednesday show shows as "Tonight" on Tuesday evening (Eastern), and times
 // render hours off. Every date decision here goes through Eastern-time helpers.
 
+// What kind of night it is. Drives the badge/label on the schedule. The app
+// itself is still a karaoke-queue product — this is purely about display.
+export type EventKind = "karaoke" | "dj" | "trivia";
+
+export const KIND_META: Record<EventKind, { label: string; accent: string }> = {
+  karaoke: { label: "Karaoke", accent: "#e879f9" }, // fuchsia
+  dj: { label: "DJ Set", accent: "#f5b642" }, // amber
+  trivia: { label: "Trivia", accent: "#22d3ee" }, // cyan
+};
+
 export type ScheduledEvent = {
   venue: string;
   city: string;
   start: Date; // absolute instant of the (Eastern) start time
   endLabel: string; // human-readable end ("12:00 AM"); shown as-is
+  kind: EventKind;
+  title?: string; // optional special-event name (e.g. a birthday / DJ gig)
 };
 
 type Residency = {
@@ -19,6 +31,7 @@ type Residency = {
   startHour: number; // 24h, Eastern
   startMinute: number;
   endLabel: string;
+  kind?: EventKind; // defaults to "karaoke"
 };
 
 const RESIDENCIES: Residency[] = [
@@ -60,6 +73,8 @@ type OneOff = {
   hh: number; // 24h Eastern
   mm: number;
   endLabel: string;
+  kind?: EventKind; // defaults to "karaoke"
+  title?: string; // optional special-event name (e.g. a birthday / DJ gig)
 };
 
 const ONE_OFF_EVENTS: OneOff[] = [
@@ -70,6 +85,7 @@ const ONE_OFF_EVENTS: OneOff[] = [
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 8, day: 14, hh: 21, mm: 0, endLabel: "12:30 AM" },
   { venue: "The Vault", city: "Haverhill", y: 2026, mon: 9, day: 16, hh: 22, mm: 0, endLabel: "11:00 PM" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 9, day: 25, hh: 21, mm: 0, endLabel: "12:00 AM" },
+  { venue: "Vault 77 Lounge", city: "Haverhill", y: 2026, mon: 10, day: 2, hh: 20, mm: 0, endLabel: "Late", kind: "dj", title: "Jocelyn's Birthday · 80's Dance Party" },
 ];
 
 // ── Eastern-time helpers (server-timezone-independent) ───────────────────────
@@ -140,7 +156,7 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
         const key = `${y}-${pad(m)}-${pad(d)}`;
         const start = fromEastern(y, m, d, r.startHour, r.startMinute);
         if (start.getTime() >= from.getTime() - GRACE && !BLACKOUT_DATES.has(key)) {
-          events.push({ venue: r.venue, city: r.city, start, endLabel: r.endLabel });
+          events.push({ venue: r.venue, city: r.city, start, endLabel: r.endLabel, kind: r.kind ?? "karaoke" });
           collected++;
         }
       }
@@ -151,7 +167,7 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
   for (const e of ONE_OFF_EVENTS) {
     const start = fromEastern(e.y, e.mon, e.day, e.hh, e.mm);
     if (start.getTime() >= from.getTime() - GRACE) {
-      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel });
+      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel, kind: e.kind ?? "karaoke", title: e.title });
     }
   }
 
