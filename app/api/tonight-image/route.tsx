@@ -143,9 +143,9 @@ export async function GET(req: Request) {
             width: badge,
             height: badge,
             borderRadius: 999,
-            background: "#ffffff",
-            border: "8px solid rgba(255,255,255,0.35)",
-            boxShadow: "0 30px 90px rgba(0,0,0,0.45)",
+            background: "#000000",
+            border: "6px solid rgba(255,255,255,0.18)",
+            boxShadow: "0 30px 90px rgba(0,0,0,0.55)",
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
