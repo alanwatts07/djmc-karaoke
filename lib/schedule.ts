@@ -7,12 +7,13 @@
 
 // What kind of night it is. Drives the badge/label on the schedule. The app
 // itself is still a karaoke-queue product — this is purely about display.
-export type EventKind = "karaoke" | "dj" | "trivia";
+export type EventKind = "karaoke" | "dj" | "trivia" | "flash";
 
 export const KIND_META: Record<EventKind, { label: string; accent: string }> = {
   karaoke: { label: "Karaoke", accent: "#e879f9" }, // fuchsia
   dj: { label: "DJ Set", accent: "#f5b642" }, // amber
   trivia: { label: "Trivia", accent: "#22d3ee" }, // cyan
+  flash: { label: "Pop-Up", accent: "#a3e635" }, // lime — last-minute one-off
 };
 
 export type ScheduledEvent = {
@@ -187,7 +188,7 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
   for (const e of ONE_OFF_EVENTS) {
     const start = fromEastern(e.y, e.mon, e.day, e.hh, e.mm);
     if (start.getTime() >= from.getTime() - GRACE) {
-      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel, kind: e.kind ?? "karaoke", title: e.title });
+      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel, kind: e.kind ?? "flash", title: e.title });
     }
   }
 
