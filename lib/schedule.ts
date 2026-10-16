@@ -22,6 +22,8 @@ export type ScheduledEvent = {
   endLabel: string; // human-readable end ("12:00 AM"); shown as-is
   kind: EventKind;
   title?: string; // optional special-event name (e.g. a birthday / DJ gig)
+  postponed?: boolean; // this specific night is off; still shown, tagged POSTPONED
+  note?: string; // reason, revealed when the postponed event is tapped
 };
 
 type Residency = {
@@ -60,6 +62,16 @@ const BLACKOUT_DATES = new Set<string>([
   "2026-07-04", // July 4th — no karaoke (holiday)
   "2026-07-11", // Moved to Fri Jul 10 this week — no Saturday karaoke
   "2026-08-22", // Away in Iceland (Aug 17–25) — no karaoke that Saturday
+]);
+
+// Residency nights that are POSTPONED (not silently removed): the night still
+// shows in the list, tagged "Postponed", and tappable to reveal why. Keyed by
+// Eastern YYYY-MM-DD → the reason shown to singers.
+const POSTPONED_DATES = new Map<string, string>([
+  [
+    "2026-10-21",
+    "No karaoke at Vault 77 this week — the venue is hosting a singles event 7–10 PM. Karaoke's back next Wednesday!",
+  ],
 ]);
 
 // One-off nights outside the weekly residencies. Times are Eastern wall-clock;
@@ -156,7 +168,15 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
         const key = `${y}-${pad(m)}-${pad(d)}`;
         const start = fromEastern(y, m, d, r.startHour, r.startMinute);
         if (start.getTime() >= from.getTime() - GRACE && !BLACKOUT_DATES.has(key)) {
-          events.push({ venue: r.venue, city: r.city, start, endLabel: r.endLabel, kind: r.kind ?? "karaoke" });
+          const note = POSTPONED_DATES.get(key);
+          events.push({
+            venue: r.venue,
+            city: r.city,
+            start,
+            endLabel: r.endLabel,
+            kind: r.kind ?? "karaoke",
+            ...(note ? { postponed: true, note } : {}),
+          });
           collected++;
         }
       }
