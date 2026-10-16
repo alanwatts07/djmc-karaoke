@@ -7,14 +7,17 @@
 
 // What kind of night it is. Drives the badge/label on the schedule. The app
 // itself is still a karaoke-queue product — this is purely about display.
-export type EventKind = "karaoke" | "dj" | "trivia" | "flash";
+export type EventKind = "karaoke" | "dj" | "trivia";
 
 export const KIND_META: Record<EventKind, { label: string; accent: string }> = {
   karaoke: { label: "Karaoke", accent: "#e879f9" }, // fuchsia
   dj: { label: "DJ Set", accent: "#f5b642" }, // amber
   trivia: { label: "Trivia", accent: "#22d3ee" }, // cyan
-  flash: { label: "Pop-Up", accent: "#a3e635" }, // lime — last-minute one-off
 };
+
+// A last-minute one-off also gets this "Pop-Up" flag badge, shown ALONGSIDE the
+// kind badge (e.g. [Pop-Up][Karaoke]).
+export const FLASH_META = { label: "Pop-Up", accent: "#a3e635" }; // lime
 
 export type ScheduledEvent = {
   venue: string;
@@ -22,6 +25,7 @@ export type ScheduledEvent = {
   start: Date; // absolute instant of the (Eastern) start time
   endLabel: string; // human-readable end ("12:00 AM"); shown as-is
   kind: EventKind;
+  flash?: boolean; // last-minute one-off → also gets the "Pop-Up" badge
   title?: string; // optional special-event name (e.g. a birthday / DJ gig)
   postponed?: boolean; // this specific night is off; still shown, tagged POSTPONED
   note?: string; // reason, revealed when the postponed event is tapped
@@ -87,6 +91,7 @@ type OneOff = {
   mm: number;
   endLabel: string;
   kind?: EventKind; // defaults to "karaoke"
+  flash?: boolean; // Pop-Up badge; defaults ON for one-offs with no explicit kind
   title?: string; // optional special-event name (e.g. a birthday / DJ gig)
 };
 
@@ -99,7 +104,7 @@ const ONE_OFF_EVENTS: OneOff[] = [
   { venue: "The Vault", city: "Haverhill", y: 2026, mon: 9, day: 16, hh: 22, mm: 0, endLabel: "11:00 PM" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 9, day: 25, hh: 21, mm: 0, endLabel: "12:00 AM" },
   { venue: "Vault 77 Lounge", city: "Haverhill", y: 2026, mon: 10, day: 2, hh: 20, mm: 0, endLabel: "Late", kind: "dj", title: "Jocelyn's Birthday · 80's Dance Party" },
-  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 16, hh: 21, mm: 0, endLabel: "12:00 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 16, hh: 21, mm: 30, endLabel: "12:30 AM" },
 ];
 
 // ── Eastern-time helpers (server-timezone-independent) ───────────────────────
@@ -189,7 +194,15 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
   for (const e of ONE_OFF_EVENTS) {
     const start = fromEastern(e.y, e.mon, e.day, e.hh, e.mm);
     if (start.getTime() >= from.getTime() - GRACE) {
-      events.push({ venue: e.venue, city: e.city, start, endLabel: e.endLabel, kind: e.kind ?? "flash", title: e.title });
+      events.push({
+        venue: e.venue,
+        city: e.city,
+        start,
+        endLabel: e.endLabel,
+        kind: e.kind ?? "karaoke",
+        flash: e.flash ?? e.kind === undefined, // last-minute one-off → Pop-Up badge
+        title: e.title,
+      });
     }
   }
 

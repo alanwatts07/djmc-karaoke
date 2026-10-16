@@ -10,6 +10,7 @@ import {
   formatEventDate,
   formatEventStart,
   KIND_META,
+  FLASH_META,
 } from "@/lib/schedule";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
@@ -165,6 +166,18 @@ export default async function Home({
                             <p className="text-sm font-semibold text-white/70 line-through decoration-amber-400/70">
                               {formatEventDate(e.start)}
                             </p>
+                            {e.flash && (
+                              <span
+                                className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                                style={{
+                                  color: FLASH_META.accent,
+                                  borderColor: `${FLASH_META.accent}66`,
+                                  backgroundColor: `${FLASH_META.accent}1a`,
+                                }}
+                              >
+                                {FLASH_META.label}
+                              </span>
+                            )}
                             <span
                               className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                               style={{
@@ -203,6 +216,18 @@ export default async function Home({
                           <p className="text-sm font-semibold text-white">
                             {formatEventDate(e.start)}
                           </p>
+                          {e.flash && (
+                            <span
+                              className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                              style={{
+                                color: FLASH_META.accent,
+                                borderColor: `${FLASH_META.accent}66`,
+                                backgroundColor: `${FLASH_META.accent}1a`,
+                              }}
+                            >
+                              {FLASH_META.label}
+                            </span>
+                          )}
                           <span
                             className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                             style={{
