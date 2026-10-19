@@ -39,7 +39,7 @@ export async function GET() {
             "linear-gradient(150deg, #2e0b52 0%, #86198f 55%, #0a0510 100%)",
           color: "white",
           fontFamily: "sans-serif",
-          padding: "72px 72px 60px",
+          padding: "56px 56px 48px",
         }}
       >
         {/* Header */}
@@ -70,7 +70,7 @@ export async function GET() {
             letterSpacing: 10,
             textTransform: "uppercase",
             color: "#f5b642",
-            marginTop: 56,
+            marginTop: 32,
             display: "flex",
           }}
         >
@@ -78,7 +78,7 @@ export async function GET() {
         </div>
 
         {/* Events */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 28, flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20, flex: 1 }}>
           {events.map((e, i) => (
             <div
               key={i}
@@ -87,15 +87,15 @@ export async function GET() {
                 flexDirection: "column",
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 22,
-                padding: "24px 30px",
+                borderRadius: 20,
+                padding: "16px 28px",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
                   <span
                     style={{
-                      fontSize: 46,
+                      fontSize: 40,
                       fontWeight: 800,
                       letterSpacing: -1,
                       opacity: e.postponed ? 0.55 : 1,
@@ -145,15 +145,15 @@ export async function GET() {
                 )}
               </div>
               {e.title && (
-                <span style={{ fontSize: 30, color: "#f0abfc", fontWeight: 700, marginTop: 6, display: "flex" }}>
+                <span style={{ fontSize: 26, color: "#f0abfc", fontWeight: 700, marginTop: 4, display: "flex" }}>
                   {e.title}
                 </span>
               )}
-              <span style={{ fontSize: 30, color: "#d8b4fe", marginTop: 6, display: "flex" }}>
+              <span style={{ fontSize: 26, color: "#d8b4fe", marginTop: 4, display: "flex" }}>
                 {e.venue} · {e.city}
               </span>
               {e.postponed && e.note && (
-                <span style={{ fontSize: 24, color: "#fcd34d", marginTop: 8, display: "flex", lineHeight: 1.3 }}>
+                <span style={{ fontSize: 22, color: "#fcd34d", marginTop: 6, display: "flex", lineHeight: 1.3 }}>
                   {e.note}
                 </span>
               )}
