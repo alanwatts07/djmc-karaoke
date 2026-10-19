@@ -77,6 +77,10 @@ const POSTPONED_DATES = new Map<string, string>([
     "2026-10-21",
     "No karaoke at Vault 77 this week — the venue is hosting a singles event 7–10 PM. Karaoke's back next Wednesday!",
   ],
+  [
+    "2026-10-31",
+    "No karaoke at The Nerve on Halloween — there's a live Halloween band show at 8 PM. Back next week!",
+  ],
 ]);
 
 // One-off nights outside the weekly residencies. Times are Eastern wall-clock;

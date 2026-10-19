@@ -93,7 +93,15 @@ export async function GET() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                  <span style={{ fontSize: 46, fontWeight: 800, letterSpacing: -1 }}>
+                  <span
+                    style={{
+                      fontSize: 46,
+                      fontWeight: 800,
+                      letterSpacing: -1,
+                      opacity: e.postponed ? 0.55 : 1,
+                      textDecoration: e.postponed ? "line-through" : "none",
+                    }}
+                  >
                     {formatEventDate(e.start)}
                   </span>
                   <span
@@ -113,9 +121,28 @@ export async function GET() {
                     {KIND_META[e.kind].label}
                   </span>
                 </div>
-                <span style={{ fontSize: 34, color: "#f5b642", fontWeight: 700 }}>
-                  {formatEventStart(e.start)}–{e.endLabel}
-                </span>
+                {e.postponed ? (
+                  <span
+                    style={{
+                      display: "flex",
+                      fontSize: 24,
+                      fontWeight: 800,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      color: "#fbbf24",
+                      border: "2px solid #fbbf2466",
+                      background: "#fbbf241a",
+                      borderRadius: 999,
+                      padding: "4px 16px",
+                    }}
+                  >
+                    Postponed
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 34, color: "#f5b642", fontWeight: 700 }}>
+                    {formatEventStart(e.start)}–{e.endLabel}
+                  </span>
+                )}
               </div>
               {e.title && (
                 <span style={{ fontSize: 30, color: "#f0abfc", fontWeight: 700, marginTop: 6, display: "flex" }}>
@@ -125,6 +152,11 @@ export async function GET() {
               <span style={{ fontSize: 30, color: "#d8b4fe", marginTop: 6, display: "flex" }}>
                 {e.venue} · {e.city}
               </span>
+              {e.postponed && e.note && (
+                <span style={{ fontSize: 24, color: "#fcd34d", marginTop: 8, display: "flex", lineHeight: 1.3 }}>
+                  {e.note}
+                </span>
+              )}
             </div>
           ))}
         </div>
