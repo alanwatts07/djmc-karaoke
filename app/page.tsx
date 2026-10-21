@@ -160,47 +160,45 @@ export default async function Home({
                       key={i}
                       className="rounded-lg bg-white/5 border border-amber-400/40 px-4 py-2.5 [&_summary]:list-none"
                     >
-                      <summary className="flex items-baseline justify-between gap-3 cursor-pointer">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-white/70 line-through decoration-amber-400/70">
-                              {formatEventDate(e.start)}
-                            </p>
-                            {e.flash && (
-                              <span
-                                className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                                style={{
-                                  color: FLASH_META.accent,
-                                  borderColor: `${FLASH_META.accent}66`,
-                                  backgroundColor: `${FLASH_META.accent}1a`,
-                                }}
-                              >
-                                {FLASH_META.label}
-                              </span>
-                            )}
+                      <summary className="cursor-pointer min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-white/70 line-through decoration-amber-400/70">
+                            {formatEventDate(e.start)}
+                          </p>
+                          {e.flash && (
                             <span
                               className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                               style={{
-                                color: KIND_META[e.kind].accent,
-                                borderColor: `${KIND_META[e.kind].accent}66`,
-                                backgroundColor: `${KIND_META[e.kind].accent}1a`,
+                                color: FLASH_META.accent,
+                                borderColor: `${FLASH_META.accent}66`,
+                                backgroundColor: `${FLASH_META.accent}1a`,
                               }}
                             >
-                              {KIND_META[e.kind].label}
+                              {FLASH_META.label}
                             </span>
-                          </div>
-                          {e.title && (
-                            <p className="text-xs font-semibold text-fuchsia-300 truncate">
-                              {e.title}
-                            </p>
                           )}
-                          <p className="text-xs text-purple-300 truncate">
-                            {e.venue} · {e.city}
-                          </p>
+                          <span
+                            className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                            style={{
+                              color: KIND_META[e.kind].accent,
+                              borderColor: `${KIND_META[e.kind].accent}66`,
+                              backgroundColor: `${KIND_META[e.kind].accent}1a`,
+                            }}
+                          >
+                            {KIND_META[e.kind].label}
+                          </span>
+                          <span className="shrink-0 rounded-full border border-amber-400/50 bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                            Postponed ⓘ
+                          </span>
                         </div>
-                        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-amber-300 bg-amber-400/15 rounded-full px-2 py-1">
-                          Postponed ⓘ
-                        </span>
+                        {e.title && (
+                          <p className="mt-1 text-xs font-semibold text-fuchsia-300 truncate">
+                            {e.title}
+                          </p>
+                        )}
+                        <p className="text-xs text-purple-300 truncate">
+                          {e.venue} · {e.city}
+                        </p>
                       </summary>
                       <p className="mt-2 text-xs text-amber-100/90 leading-relaxed">
                         {e.note}
