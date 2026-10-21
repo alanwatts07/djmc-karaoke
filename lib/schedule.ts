@@ -75,7 +75,7 @@ const BLACKOUT_DATES = new Set<string>([
 const POSTPONED_DATES = new Map<string, string>([
   [
     "2026-10-21",
-    "No karaoke at Vault 77 this week — the venue is hosting a singles event 7–10 PM. Karaoke's back next Wednesday!",
+    "No karaoke at Vault 77 this week — postponed to next Wednesday. See you then!",
   ],
   [
     "2026-10-31",
