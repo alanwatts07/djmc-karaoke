@@ -109,6 +109,7 @@ const ONE_OFF_EVENTS: OneOff[] = [
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 9, day: 25, hh: 21, mm: 0, endLabel: "12:00 AM" },
   { venue: "Vault 77 Lounge", city: "Haverhill", y: 2026, mon: 10, day: 2, hh: 20, mm: 0, endLabel: "Late", kind: "dj", title: "Jocelyn's Birthday · 80's Dance Party" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 16, hh: 21, mm: 30, endLabel: "12:30 AM" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 30, hh: 21, mm: 0, endLabel: "12:00 AM", title: "Halloween Costume Party — Dress Up!" },
 ];
 
 // ── Eastern-time helpers (server-timezone-independent) ───────────────────────
