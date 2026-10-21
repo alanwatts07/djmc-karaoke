@@ -44,7 +44,11 @@ export async function GET(req: Request) {
     ? { width: 1080, height: 1920 }
     : { width: 1080, height: 1080 };
 
-  const event = getUpcomingEvents(1)[0];
+  // ?i=N selects which upcoming show (0 = next up, default). The headline shows
+  // "TONIGHT" only when that show is today — otherwise its date.
+  const i = Math.max(0, parseInt(searchParams.get("i") ?? "0", 10) || 0);
+  const upcoming = getUpcomingEvents(i + 1);
+  const event = upcoming[i] ?? upcoming[upcoming.length - 1];
 
   // No upcoming show on the books — render a graceful fallback card.
   if (!event) {
