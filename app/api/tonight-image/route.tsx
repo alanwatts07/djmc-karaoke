@@ -80,9 +80,11 @@ export async function GET(req: Request) {
   }
 
   const kind = KIND_META[event.kind];
+  const postponed = !!event.postponed;
   const dateLabel = formatEventDate(event.start); // "Tonight" when it's today
   const isTonight = dateLabel === "Tonight";
   const headline = isTonight ? "TONIGHT" : dateLabel.toUpperCase();
+  const POSTPONED_ACCENT = "#fbbf24";
 
   const venueLogo = await dataUri(venueLogoFile(event.venue));
 
@@ -114,7 +116,7 @@ export async function GET(req: Request) {
             top: story ? 470 : 250,
             width: 760,
             height: 300,
-            background: `${kind.accent}55`,
+            background: `${postponed ? POSTPONED_ACCENT : kind.accent}55`,
             filter: "blur(120px)",
             display: "flex",
           }}
@@ -173,7 +175,7 @@ export async function GET(req: Request) {
           {headline}
         </div>
 
-        {/* Kind badge */}
+        {/* Kind badge (or POSTPONED banner) */}
         <div
           style={{
             display: "flex",
@@ -181,15 +183,15 @@ export async function GET(req: Request) {
             fontWeight: 800,
             letterSpacing: 4,
             textTransform: "uppercase",
-            color: kind.accent,
-            border: `3px solid ${kind.accent}88`,
-            background: `${kind.accent}22`,
+            color: postponed ? POSTPONED_ACCENT : kind.accent,
+            border: `3px solid ${postponed ? POSTPONED_ACCENT : kind.accent}88`,
+            background: `${postponed ? POSTPONED_ACCENT : kind.accent}22`,
             borderRadius: 999,
             padding: "10px 30px",
             marginTop: story ? 40 : 28,
           }}
         >
-          {kind.label}
+          {postponed ? "Postponed" : kind.label}
         </div>
 
         {/* Optional special-event title */}
@@ -222,18 +224,35 @@ export async function GET(req: Request) {
           {event.venue} · {event.city}
         </div>
 
-        {/* Time */}
-        <div
-          style={{
-            display: "flex",
-            fontSize: story ? 72 : 60,
-            fontWeight: 900,
-            color: "#f5b642",
-            marginTop: story ? 24 : 14,
-          }}
-        >
-          {formatEventStart(event.start)}–{event.endLabel}
-        </div>
+        {/* Time — or the postponement reason */}
+        {postponed ? (
+          <div
+            style={{
+              display: "flex",
+              textAlign: "center",
+              fontSize: story ? 44 : 38,
+              fontWeight: 600,
+              lineHeight: 1.3,
+              color: "#fcd34d",
+              marginTop: story ? 30 : 20,
+              maxWidth: story ? 880 : 900,
+            }}
+          >
+            {event.note}
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              fontSize: story ? 72 : 60,
+              fontWeight: 900,
+              color: "#f5b642",
+              marginTop: story ? 24 : 14,
+            }}
+          >
+            {formatEventStart(event.start)}–{event.endLabel}
+          </div>
+        )}
 
         {/* Footer URL */}
         <div

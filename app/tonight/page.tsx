@@ -42,10 +42,19 @@ export default function TonightPage() {
         <h1 className="text-3xl font-extrabold text-center mb-1">
           {event.title ?? "Karaoke Night"}
         </h1>
-        <p className="text-sm text-purple-200 mb-6 text-center">
-          {dateLabel} · {formatEventStart(event.start)}–{event.endLabel} ·{" "}
-          {event.venue}
+        <p className="text-sm text-purple-200 mb-2 text-center">
+          {dateLabel} ·{" "}
+          {event.postponed
+            ? "Postponed"
+            : `${formatEventStart(event.start)}–${event.endLabel}`}{" "}
+          · {event.venue}
         </p>
+        {event.postponed && event.note && (
+          <p className="text-sm text-amber-200 mb-6 text-center max-w-sm">
+            {event.note}
+          </p>
+        )}
+        {!event.postponed && <div className="mb-6" />}
 
         {/* The postable hero — the venue can save/repost this directly */}
         <div className="w-full rounded-2xl overflow-hidden border border-white/15 shadow-2xl shadow-fuchsia-900/40">
