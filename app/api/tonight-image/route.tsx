@@ -6,6 +6,7 @@ import {
   formatEventDate,
   formatEventStart,
   KIND_META,
+  FLASH_META,
 } from "@/lib/schedule";
 
 // A bold, always-current hero graphic for TONIGHT'S show (or the next one up),
@@ -88,8 +89,14 @@ export async function GET(req: Request) {
 
   const venueLogo = await dataUri(venueLogoFile(event.venue));
 
-  // Logo badge scales with canvas; story mode gets a bit more room.
-  const badge = story ? 440 : 400;
+  // Logo badge scales with canvas; story mode gets a bit more room. A
+  // postponement adds a reason note, so shrink things to keep it all on-canvas.
+  const badge = story ? 400 : postponed ? 320 : 360;
+  const headlineSize = postponed
+    ? story ? 150 : 128
+    : headline.length > 8
+      ? story ? 150 : 128
+      : story ? 200 : 164;
 
   return new ImageResponse(
     (
@@ -164,34 +171,53 @@ export async function GET(req: Request) {
         <div
           style={{
             display: "flex",
-            fontSize: headline.length > 8 ? (story ? 150 : 128) : story ? 210 : 180,
+            fontSize: headlineSize,
             fontWeight: 900,
             letterSpacing: -4,
             lineHeight: 1,
-            marginTop: story ? 70 : 48,
-            textShadow: `0 0 60px ${kind.accent}aa`,
+            marginTop: story ? 60 : 40,
+            textShadow: `0 0 60px ${(postponed ? POSTPONED_ACCENT : kind.accent)}aa`,
           }}
         >
           {headline}
         </div>
 
-        {/* Kind badge (or POSTPONED banner) */}
-        <div
-          style={{
-            display: "flex",
-            fontSize: story ? 34 : 30,
-            fontWeight: 800,
-            letterSpacing: 4,
-            textTransform: "uppercase",
-            color: postponed ? POSTPONED_ACCENT : kind.accent,
-            border: `3px solid ${postponed ? POSTPONED_ACCENT : kind.accent}88`,
-            background: `${postponed ? POSTPONED_ACCENT : kind.accent}22`,
-            borderRadius: 999,
-            padding: "10px 30px",
-            marginTop: story ? 40 : 28,
-          }}
-        >
-          {postponed ? "Postponed" : kind.label}
+        {/* Badge row: optional Pop-Up flag + kind (or POSTPONED) */}
+        <div style={{ display: "flex", gap: 16, marginTop: story ? 36 : 24, alignItems: "center" }}>
+          {event.flash && (
+            <div
+              style={{
+                display: "flex",
+                fontSize: story ? 34 : 30,
+                fontWeight: 800,
+                letterSpacing: 4,
+                textTransform: "uppercase",
+                color: FLASH_META.accent,
+                border: `3px solid ${FLASH_META.accent}88`,
+                background: `${FLASH_META.accent}22`,
+                borderRadius: 999,
+                padding: "10px 30px",
+              }}
+            >
+              {FLASH_META.label}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              fontSize: story ? 34 : 30,
+              fontWeight: 800,
+              letterSpacing: 4,
+              textTransform: "uppercase",
+              color: postponed ? POSTPONED_ACCENT : kind.accent,
+              border: `3px solid ${postponed ? POSTPONED_ACCENT : kind.accent}88`,
+              background: `${postponed ? POSTPONED_ACCENT : kind.accent}22`,
+              borderRadius: 999,
+              padding: "10px 30px",
+            }}
+          >
+            {postponed ? "Postponed" : kind.label}
+          </div>
         </div>
 
         {/* Optional special-event title */}
