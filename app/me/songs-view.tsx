@@ -8,7 +8,8 @@ import type {
   SingerStatus,
 } from "@/lib/supabase";
 import { publicTierLabel, publicTierSubtext } from "@/lib/tiers";
-import Footer from "../footer";
+import Footer, { VENMO } from "../footer";
+import { buildVenmoUrl } from "../tip-button";
 
 const POLL_MS = 5000;
 
@@ -186,6 +187,18 @@ function SetlistRow({
         <span className="shrink-0 text-xs uppercase tracking-wider text-white/80">
           Now
         </span>
+      )}
+      {canEdit && (
+        <a
+          href={buildVenmoUrl(VENMO, song.stage_name, song.song)}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 rounded-full bg-[#3D95CE] hover:brightness-110 text-white text-xs font-semibold px-2.5 py-1 no-underline"
+          aria-label={`Tip for ${song.song}`}
+          title="Tip on Venmo for this song"
+        >
+          💸 Tip
+        </a>
       )}
       {canEdit && (
         <button

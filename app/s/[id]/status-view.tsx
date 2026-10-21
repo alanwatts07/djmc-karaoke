@@ -67,7 +67,10 @@ export default function StatusView({ initial }: { initial: PublicSinger }) {
           Keep this page open. It updates on its own.
         </p>
 
-        <Footer singerName={singer.stage_name} />
+        <Footer
+          singerName={singer.stage_name}
+          song={singer.status === "done" ? undefined : singer.song}
+        />
       </div>
     </main>
   );

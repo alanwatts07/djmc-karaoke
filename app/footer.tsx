@@ -5,7 +5,7 @@ import TipButton from "./tip-button";
 // to override the placeholders. NEXT_PUBLIC_ means they're inlined at build
 // time and exposed to the browser — that's correct here since these end up
 // rendered in HTML anyway.
-const VENMO = process.env.NEXT_PUBLIC_VENMO_HANDLE ?? "your-venmo-handle";
+export const VENMO = process.env.NEXT_PUBLIC_VENMO_HANDLE ?? "your-venmo-handle";
 const INSTAGRAM =
   process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE ?? "your-instagram";
 const WEBSITE = process.env.NEXT_PUBLIC_WEBSITE ?? "your-site.com";
@@ -23,9 +23,11 @@ const SPOTIFY_URL = process.env.NEXT_PUBLIC_SPOTIFY_URL;
 
 export default function Footer({
   singerName,
+  song,
   promptForName,
 }: {
   singerName?: string;
+  song?: string;
   promptForName?: boolean;
 }) {
   return (
@@ -38,6 +40,7 @@ export default function Footer({
       <TipButton
         venmoHandle={VENMO}
         singerName={singerName}
+        song={song}
         readNameFromInput={promptForName}
       />
 

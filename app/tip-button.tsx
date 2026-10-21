@@ -2,8 +2,14 @@
 
 import { useCallback } from "react";
 
-function buildVenmoUrl(handle: string, singerName?: string): string {
-  const note = singerName ? `Karaoke tip — ${singerName}` : "Karaoke tip";
+export function buildVenmoUrl(
+  handle: string,
+  singerName?: string,
+  song?: string,
+): string {
+  // Memo carries name (and song, when tipping for a specific one) so the host
+  // can match the Venmo payment to the right queue row.
+  const note = ["Karaoke tip", singerName, song].filter(Boolean).join(" — ");
   const params = new URLSearchParams({
     txn: "pay",
     audience: "public",
@@ -16,10 +22,12 @@ function buildVenmoUrl(handle: string, singerName?: string): string {
 export default function TipButton({
   venmoHandle,
   singerName,
+  song,
   readNameFromInput,
 }: {
   venmoHandle: string;
   singerName?: string;
+  song?: string;
   // When true and singerName is unset, the click handler reads the value of
   // the page's <input name="stage_name"> and uses that in the memo. If the
   // input is empty, focuses it and stops the navigation.
@@ -59,7 +67,7 @@ export default function TipButton({
   return (
     <div className="flex justify-center">
       <a
-        href={buildVenmoUrl(venmoHandle, singerName)}
+        href={buildVenmoUrl(venmoHandle, singerName, song)}
         onClick={handleClick}
         target="_blank"
         rel="noreferrer"
