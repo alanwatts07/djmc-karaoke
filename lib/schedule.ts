@@ -81,6 +81,10 @@ const POSTPONED_DATES = new Map<string, string>([
     "2026-10-31",
     "No karaoke at The Nerve on Halloween — there's a live Halloween band show at 8 PM. Back next week!",
   ],
+  [
+    "2026-11-07",
+    "No karaoke at The Nerve this Saturday — there's a live band playing. Catch karaoke Friday instead!",
+  ],
 ]);
 
 // One-off nights outside the weekly residencies. Times are Eastern wall-clock;
@@ -110,6 +114,7 @@ const ONE_OFF_EVENTS: OneOff[] = [
   { venue: "Vault 77 Lounge", city: "Haverhill", y: 2026, mon: 10, day: 2, hh: 20, mm: 0, endLabel: "Late", kind: "dj", title: "Jocelyn's Birthday · 80's Dance Party" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 16, hh: 21, mm: 30, endLabel: "12:30 AM" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 30, hh: 21, mm: 0, endLabel: "12:00 AM", title: "Scaryoke! Halloween Costume Party" },
+  { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 11, day: 6, hh: 21, mm: 0, endLabel: "12:00 AM" },
 ];
 
 // ── Eastern-time helpers (server-timezone-independent) ───────────────────────
