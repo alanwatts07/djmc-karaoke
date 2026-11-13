@@ -53,10 +53,9 @@ async function dataUri(relPath: string): Promise<string> {
 }
 
 export async function GET() {
-  const [stats, logo, nerveLogo] = await Promise.all([
+  const [stats, logo] = await Promise.all([
     getFlyerStats(),
     dataUri("public/djmc-logo.png"),
-    dataUri("public/nerve-logo.png"),
   ]);
 
   const tiles: { value: string; label: string }[] = [
@@ -226,50 +225,39 @@ export async function GET() {
           ))}
         </div>
 
-        {/* Weeknight callout */}
+        {/* Booking callout */}
         <div
           style={{
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: 30,
             marginTop: 34,
             width: "100%",
-            padding: "22px 34px",
+            padding: "26px 34px",
             borderRadius: 26,
             background: `${GOLD}22`,
             border: `3px solid ${GOLD}88`,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={nerveLogo}
-            width={110}
-            height={110}
-            alt=""
-            style={{ objectFit: "contain" }}
-          />
-          <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-            <div
-              style={{
-                display: "flex",
-                fontSize: 36,
-                fontWeight: 900,
-                color: GOLD,
-              }}
-            >
-              Slow weeknight? Make it karaoke night.
-            </div>
-            <div
-              style={{
-                display: "flex",
-                fontSize: 27,
-                color: "#fde68a",
-                lineHeight: 1.3,
-              }}
-            >
-              Saturdays at The Nerve, Haverhill. Now booking weeknights and
-              private events.
-            </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 40,
+              fontWeight: 900,
+              color: GOLD,
+            }}
+          >
+            Got a slow night? Let&apos;s make it karaoke night.
+          </div>
+          <div
+            style={{
+              display: "flex",
+              fontSize: 28,
+              color: "#fde68a",
+              marginTop: 8,
+            }}
+          >
+            Now booking weeknights, weekends and private events.
           </div>
         </div>
 
