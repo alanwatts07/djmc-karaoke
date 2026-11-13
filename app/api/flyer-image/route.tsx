@@ -188,6 +188,16 @@ export async function GET() {
             </div>
           ))}
         </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 26,
+            color: "#f5d0fe",
+            marginTop: 16,
+          }}
+        >
+          Proven every week at The Nerve, Haverhill · since {stats.since}
+        </div>
 
         {/* Pitch */}
         <div

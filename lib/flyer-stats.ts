@@ -12,6 +12,7 @@ export type FlyerStats = {
   avgSignups: number; // per night, nights with a real crowd (see below)
   bestNight: number; // most sign-ups in one night
   avgHours: number; // average length of a night, start of first song → last
+  since: string; // month of the first archived night, e.g. "May 2026"
 };
 
 // A night cut short (started late, rained out, etc.) drags the averages down
@@ -28,6 +29,7 @@ export async function getFlyerStats(): Promise<FlyerStats> {
     (n) => (n.duration_seconds ?? 0) >= MIN_NIGHT_SECONDS,
   );
   const sung = stats.singers.filter((s) => s.sung > 0);
+  const first = nights.map((n) => n.ended_at).sort()[0];
   const avg = (xs: number[]) =>
     xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
 
@@ -40,5 +42,12 @@ export async function getFlyerStats(): Promise<FlyerStats> {
     bestNight: Math.max(0, ...nights.map((n) => n.total_signups)),
     avgHours:
       Math.round(avg(full.map((n) => n.duration_seconds ?? 0)) / 360) / 10,
+    since: first
+      ? new Date(first).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+          timeZone: "America/New_York",
+        })
+      : "",
   };
 }
