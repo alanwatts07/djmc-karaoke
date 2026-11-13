@@ -14,6 +14,8 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL ?? "kara.ftrai.uk").replace(
   "",
 );
 const INSTAGRAM = process.env.NEXT_PUBLIC_INSTAGRAM_HANDLE;
+// Booking phone — override with NEXT_PUBLIC_BOOKING_PHONE in Vercel.
+const PHONE = process.env.NEXT_PUBLIC_BOOKING_PHONE ?? "(978) 801-1106";
 const SIZE = { width: 1275, height: 1650 };
 
 const PINK = "#f0abfc";
@@ -283,6 +285,7 @@ export async function GET() {
           }}
         >
           <div style={{ display: "flex" }}>Book: {SITE}</div>
+          <div style={{ display: "flex" }}>Call/Text: {PHONE}</div>
           {INSTAGRAM && <div style={{ display: "flex" }}>@{INSTAGRAM}</div>}
         </div>
       </div>
