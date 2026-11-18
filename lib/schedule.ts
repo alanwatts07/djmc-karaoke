@@ -50,14 +50,7 @@ const RESIDENCIES: Residency[] = [
     startMinute: 0,
     endLabel: "12:00 AM",
   },
-  {
-    venue: "Vault 77 Lounge",
-    city: "Haverhill",
-    dayOfWeek: 3, // Wednesday
-    startHour: 21, // 9:00 PM
-    startMinute: 0,
-    endLabel: "11:00 PM",
-  },
+  // Vault 77 Wednesday residency ended (low turnout) — no longer recurring.
 ];
 
 // Residency nights we're NOT doing karaoke — cancelled or the venue's booked.
@@ -85,6 +78,10 @@ const POSTPONED_DATES = new Map<string, string>([
     "2026-11-07",
     "No karaoke at The Nerve this Saturday — there's a live band playing. Catch karaoke Friday instead!",
   ],
+  [
+    "2026-11-28",
+    "No karaoke at The Nerve this Saturday — DJ MC is on vacation. Back the following week!",
+  ],
 ]);
 
 // One-off nights outside the weekly residencies. Times are Eastern wall-clock;
@@ -101,6 +98,8 @@ type OneOff = {
   kind?: EventKind; // defaults to "karaoke"
   flash?: boolean; // Pop-Up badge; defaults ON for one-offs with no explicit kind
   title?: string; // optional special-event name (e.g. a birthday / DJ gig)
+  postponed?: boolean; // show this one-off tagged "Postponed"
+  note?: string; // reason, revealed when the postponed event is tapped
 };
 
 const ONE_OFF_EVENTS: OneOff[] = [
@@ -115,6 +114,7 @@ const ONE_OFF_EVENTS: OneOff[] = [
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 16, hh: 21, mm: 30, endLabel: "12:30 AM" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 10, day: 30, hh: 21, mm: 0, endLabel: "12:00 AM", title: "Scaryoke! Halloween Costume Party" },
   { venue: "The Nerve", city: "Haverhill", y: 2026, mon: 11, day: 6, hh: 21, mm: 0, endLabel: "12:00 AM" },
+  { venue: "Vault 77 Lounge", city: "Haverhill", y: 2026, mon: 11, day: 18, hh: 21, mm: 0, endLabel: "11:00 PM", flash: false, postponed: true, note: "Vault 77 karaoke is postponed — turnout's been low here. Come sing with us at The Nerve instead!" },
 ];
 
 // ── Eastern-time helpers (server-timezone-independent) ───────────────────────
@@ -212,6 +212,7 @@ export function getUpcomingEvents(count = 3, from: Date = new Date()): Scheduled
         kind: e.kind ?? "karaoke",
         flash: e.flash ?? e.kind === undefined, // last-minute one-off → Pop-Up badge
         title: e.title,
+        ...(e.postponed ? { postponed: true, note: e.note } : {}),
       });
     }
   }
