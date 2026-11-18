@@ -12,8 +12,13 @@ import {
   KIND_META,
   FLASH_META,
 } from "@/lib/schedule";
+import { getFlyerStats } from "@/lib/flyer-stats";
 import SubmitButton from "./submit-button";
 import Footer from "./footer";
+
+// Booking phone shown on the promo splash (override via env).
+const BOOKING_PHONE = process.env.NEXT_PUBLIC_BOOKING_PHONE ?? "(978) 801-1106";
+const BOOKING_TEL = "+1" + BOOKING_PHONE.replace(/[^0-9]/g, "");
 
 // Per-device limits. The 3-active cap is the primary defense against flooding
 // (one phone can't pile up the queue); the hourly window is belt-and-suspenders
@@ -104,9 +109,10 @@ export default async function Home({
   // Closed: render the promo splash. If the visitor is a returning singer,
   // give them a button into their setlist so they don't think we forgot them.
   if (!sessionOpen) {
+    const stats = await getFlyerStats();
     return (
       <main className="flex-1 flex flex-col items-center p-6 pt-12 bg-gradient-to-b from-purple-950 via-fuchsia-900 to-black text-white">
-        <div className="w-full max-w-sm text-center">
+        <div className="w-full max-w-md text-center">
           <Image
             src="/djmc-logo.png"
             alt="DJ MC Karaoke"
@@ -256,6 +262,81 @@ export default async function Home({
             );
           })()}
 
+          {/* By the numbers — real, from archived nights */}
+          {stats.nights > 0 && (
+            <div className="mb-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-300 text-center mb-3">
+                By the numbers
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <Stat n={stats.performances} label="songs sung" />
+                <Stat n={stats.uniqueSingers} label="singers" />
+                <Stat n={stats.regulars} label="regulars" />
+                <Stat n={stats.avgSignups} label="avg / night" />
+                <Stat n={stats.bestNight} label="best night" />
+                <Stat n={`${stats.avgHours}h`} label="per night" />
+              </div>
+              {stats.since && (
+                <p className="mt-2 text-center text-[11px] text-white/40">
+                  Live since {stats.since}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* What I bring */}
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-300 text-center mb-3">
+              What I bring
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Service icon="🎤" title="Karaoke" desc="Self-serve sign-up, fair rotation — no paper slips." />
+              <Service icon="🎧" title="DJ sets" desc="Dance floors, parties, theme nights." />
+              <Service icon="🧠" title="Trivia" desc="Live multiplayer trivia, right on their phones." />
+              <Service icon="🎉" title="Private events" desc="Birthdays, weddings, corporate & more." />
+            </div>
+          </div>
+
+          {/* Live reel — placeholder until clips are added */}
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-300 text-center mb-3">
+              Live reel
+            </p>
+            <div className="aspect-video rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] flex flex-col items-center justify-center gap-2 text-center px-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-200 text-lg">
+                ▶
+              </div>
+              <p className="text-sm font-medium text-white/70">Clips coming soon</p>
+              <p className="max-w-[220px] text-[11px] text-white/40 leading-snug">
+                Nothing beats being there — catch a live show for the full vibe.
+              </p>
+            </div>
+          </div>
+
+          {/* Booking CTA */}
+          <div className="mb-8 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-center">
+            <p className="text-base font-bold">Want this at your spot?</p>
+            <p className="mt-1 text-xs text-white/60">
+              Now booking weeknights, weekends &amp; private events.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              <a
+                href={`tel:${BOOKING_TEL}`}
+                className="rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-900 font-semibold py-2.5 no-underline"
+              >
+                📞 Call / Text {BOOKING_PHONE}
+              </a>
+              <a
+                href="https://trivia.mattcorwin.dev"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg bg-white/10 hover:bg-white/20 py-2.5 text-sm font-medium no-underline"
+              >
+                🧠 Check out the Trivia app ↗
+              </a>
+            </div>
+          </div>
+
           <Footer />
         </div>
       </main>
@@ -387,5 +468,26 @@ export default async function Home({
         />
       </div>
     </main>
+  );
+}
+
+function Stat({ n, label }: { n: number | string; label: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 py-2.5">
+      <div className="text-2xl font-extrabold leading-none tabular-nums text-white">
+        {n}
+      </div>
+      <div className="mt-1 text-[11px] text-white/55">{label}</div>
+    </div>
+  );
+}
+
+function Service({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-left">
+      <div className="text-xl leading-none">{icon}</div>
+      <div className="mt-1.5 text-sm font-semibold">{title}</div>
+      <div className="mt-0.5 text-[11px] leading-snug text-white/55">{desc}</div>
+    </div>
   );
 }
